@@ -46,4 +46,5 @@ _deps
 
 # this project
 Lez1/.idea
+.idea
 Lez1/cmake-build-debug
