@@ -43,3 +43,7 @@ _deps
 *.exe
 *.out
 *.app
+
+# this project
+Lez1/.idea
+Lez1/cmake-build-debug
