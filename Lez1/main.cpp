@@ -1,6 +1,8 @@
 #include <iostream>
+#include "es_1/es_1.h"
+#include "es_2/es_2.h"
 
 int main() {
-    std::cout << "Hello, World!" << std::endl;
+    es_2();
     return 0;
 }
