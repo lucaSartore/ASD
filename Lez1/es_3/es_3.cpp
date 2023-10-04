@@ -3,6 +3,7 @@
 //
 
 #include "es_3.h"
+#include "../es_2/es_2.h"
 #include <iostream>
 #include <stdio.h>
 #include <fstream>
@@ -18,9 +19,8 @@ public:
     int size_y;
 
     vector<vector<int>> mat_og;
+    // first is x second is y
     vector<vector<int>> mat_integral;
-    vector<vector<int>> mat_neg_integral;
-    vector<vector<int>> mat_neg_integral_partial_max;
 
     static int get_or_zero(vector<vector<int>>& mat, int x, int y){
         if (x == -1 || y == -1){
@@ -37,7 +37,7 @@ public:
 
         fscanf_s(f,"%d %d", &size_y, &size_x);
 
-        for(auto mat: {&mat_og, &mat_integral, &mat_neg_integral_partial_max, &mat_neg_integral}){
+        for(auto mat: {&mat_og, &mat_integral}){
             *mat = vector<vector<int>>();
             mat->reserve(size_x);
             for(int x=0; x<size_x; x++){
@@ -72,40 +72,59 @@ public:
         return get_or_zero(mat_integral,x2,y2) + get_or_zero(mat_integral,x1-1,y1-1) - get_or_zero(mat_integral,x2,y1-1) - get_or_zero(mat_integral,x1-1,y2);
     }
 
-    /// initialize the matrix containing the 2d integral
-    void init_mat_neg_integral(){
-        for(int y=0; y<size_y; y++){
-            for(int x=0; x<size_x; x++){
-                mat_neg_integral[x][y] = get_or_zero(mat_integral,x-1,y-1) - get_or_zero(mat_integral,x,y-1) - get_or_zero(mat_integral,x-1,y);
-            }
-        }
-    }
-
-    /// initialize the matrix containing minimum integral behind
-    /// can be called only after mat neg integral is initialized
-    void init_mat_neg_integral_partial_max(){
-        for(int y=0; y<size_y; y++){
-            for(int x=0; x<size_x; x++){
-                mat_neg_integral_partial_max[x][y] = max(get_or_zero(mat_neg_integral_partial_max, x - 1, y), get_or_zero(mat_neg_integral_partial_max, x, y - 1));
-                mat_neg_integral_partial_max[x][y] = max(mat_neg_integral_partial_max[x][y], mat_neg_integral[x][y]);
-            }
-        }
-    }
 
     /// find the maximum value
-    /// can be called only after init_mat_neg_integral_partial_max is initialized
     int find_max(){
-        int max_v = 0;
-        for(int y=0; y<size_y; y++){
-            for(int x=0; x<size_x; x++){
-                max_v = max(max_v, mat_integral[x][y] + mat_neg_integral_partial_max[x][y]);
+
+        if (size_x == 0 || size_y == 0){
+            return  0;
+        }
+
+        int small_size;
+        int big_size;
+        bool x_is_bigger;
+
+        if (size_x > size_y){
+            x_is_bigger = true;
+            big_size = size_x;
+            small_size = size_y;
+        }else{
+            x_is_bigger = false;
+            big_size = size_y;
+            small_size = size_x;
+        }
+
+        auto get_sub_sum = [this, x_is_bigger](int big, int small_1, int small_2) {
+            if(x_is_bigger){
+                return this->sum_on(big,small_1,big,small_2);
+            }else{
+                return this->sum_on(small_1,big,small_2,big);
+            }
+        };
+
+        vector<int> partial_sum = vector<int>();
+        partial_sum.reserve(big_size);
+        for(int i=0; i<big_size; i++){partial_sum.push_back(0);}
+
+        int max = get_sub_sum(0,0,0);
+
+        for(int s2=0; s2 < small_size; s2++){
+            for(int s1=0; s1 <= s2; s1++){
+                for(int i=0; i<big_size; i++){
+                    partial_sum[i] = get_sub_sum(i,s1,s2);
+                }
+
+                int max_this_row = max_subarray(partial_sum);
+
+                if(max_this_row >  max){
+                    max = max_this_row;
+                }
             }
         }
-        return  max_v;
+        return max;
     }
 };
 
-vector<vector<int>> mat_min;
 
 ostream& operator<<(ostream& os,const vector<vector<int>> mat){
     int size_x = mat.size();
@@ -127,8 +146,6 @@ ostream& operator<<(ostream& os,const MyMat& myMat){
 
     os << "Original Mat: " << endl << myMat.mat_og  << endl << "---------------------------------------------" << endl;
     os << "Integral Mat: " << endl << myMat.mat_integral << endl << "---------------------------------------------" << endl;
-    os << "Neg Integral Mat: " << endl << myMat.mat_neg_integral << endl << "---------------------------------------------" << endl;
-    os << "Max Mat: " << endl << myMat.mat_neg_integral_partial_max;
 
     return os;
 }
@@ -136,38 +153,29 @@ ostream& operator<<(ostream& os,const MyMat& myMat){
 MyMat get_mat_from_file(char* file){
     MyMat myMat = MyMat(file);
     myMat.init_mat_integral();
-    myMat.init_mat_neg_integral();
-    myMat.init_mat_neg_integral_partial_max();
     return myMat;
 }
 
 int get_output_from_file(char* file){
     MyMat myMat = get_mat_from_file(file);
-    cout << myMat << endl;
+    //cout << myMat << endl;
     return myMat.find_max();
 }
 
 // prendi 2 numeri da un file e sommali su output file
 void es_3(){
-    /*
+
     int v = get_output_from_file("../es_3/input_6.txt");
     cout << v <<"=6?" << endl;
-    //assert(v == 6);
+    assert(v == 6);
 
     v = get_output_from_file("../es_3/input_18.txt");
     cout << v <<"=18?" << endl;
-    //assert(v == 18);
+    assert(v == 18);
 
     v = get_output_from_file("../es_3/input_15.txt");
     cout << v <<"=15?" << endl;
-    //assert(v == 15);*/
+    assert(v == 15);
 
 
-    MyMat myMat = get_mat_from_file("../es_3/input_15.txt");
-
-    cout << myMat << endl;
-
-    cout << myMat.sum_on(1,1,2,2) << endl;
-
-    cout << myMat.sum_on(1,2,2,2) << endl;
 }

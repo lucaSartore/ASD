@@ -9,6 +9,33 @@
 #include <vector>
 using namespace std;
 
+
+int max_subarray(vector<int> &v){
+
+    int integral = 0;
+    int min_integral = 0;
+    int max = 0;
+
+    for(auto n: v){
+
+        integral += n;
+
+        if(n>0){
+            int potential_max = integral - min_integral;
+
+            if(potential_max > max){
+                max = potential_max;
+            }
+        }
+
+        if(integral < min_integral){
+            min_integral = integral;
+        }
+    }
+    return max;
+}
+
+
 // prendi 2 numeri da un file e sommali su output file
 void es_2(){
     auto input = fopen("../es_2/input.txt","r");
@@ -19,9 +46,7 @@ void es_2(){
 
 
     int integral = 0;
-
     int min_integral = 0;
-
     int max = 0;
 
     for (int i=0; i<l; i++){
