@@ -14,4 +14,7 @@ set(SOURCE_FILES
         es_3/es_3.h
 )
 
+#add_executable(Lez1 main.cpp)
+add_executable(Sottomat sottomat.cpp)
 add_executable(Lez1 main.cpp ${SOURCE_FILES})
+add_executable(Cestini cesrtini.cpp)
