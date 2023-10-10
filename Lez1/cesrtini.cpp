@@ -1,14 +1,9 @@
-//
-// Created by lucas on 10/10/2023.
-//
-
 #include <iostream>
 #include <vector>
 
 using namespace std;
 class Cestino{
 public:
-
     vector<int> stack;
 
 
@@ -27,14 +22,18 @@ public:
     }
 
     int get(){
-        int a = stack.back();
-        stack.pop_back();
-        return a;
+        try{
+            int a = stack.back();
+            stack.pop_back();
+            return a;
+        }catch (...){
+            throw "empty basket";
+        }
     }
 };
 
 class Camera{
-
+public:
     vector<Cestino> cestini;
 
     Camera(int num_cestini, int dim_cestino){
@@ -51,11 +50,30 @@ class Camera{
     }
 
     int test(int id_cestino, int index_oggetto){
-        return cestini[id_cestino].stack[index_oggetto];
+        try{
+            return cestini.at(id_cestino).stack.at(index_oggetto);
+        }catch(...){
+            return -1;
+        }
     }
 
-    int muovi(int from, int to){
+    void muovi(int from, int to){
         cestini[to].insert(cestini[from].get());
     }
-
 };
+
+Camera camera(0,0);
+
+void inizia(int N, int M){
+    camera = Camera(M,N);
+}
+
+void sposta(int a, int b) {
+    camera.muovi(a,b);
+}
+
+int controlla(int a, int i) {
+    return camera.test(a,i);
+}
+
+//int main(){};

@@ -17,4 +17,6 @@ set(SOURCE_FILES
 #add_executable(Lez1 main.cpp)
 add_executable(Sottomat sottomat.cpp)
 add_executable(Lez1 main.cpp ${SOURCE_FILES})
-add_executable(Cestini cesrtini.cpp)
+add_executable(Cestini grader.cpp cestini.h cesrtini.cpp)
+add_executable(Brackets brackets.cpp)
+add_executable(Brackets2 brackets2.cpp)
