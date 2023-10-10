@@ -1,49 +1,96 @@
-#include <istream>
+#include <iostream>
 #include <stdio.h>
 #include <fstream>
 #include <stack>
+#include <stdio.h>
+#include <list>
+
+
+//#define DEBUG
 
 /// Funziona ma è troppo lento!!!
 
 using namespace std;
 
 
+list<int> merge_lists(list<int> &&left, list<int> &&right){
 
-bool is_correct(int * vec, int len, stack<int> &can_close){
-
-
-    if (len == 0){
-        return can_close.empty();
+    while (true){
+        if(left.empty() || right.empty()){
+            break;
+        }
+        if(left.back() == right.front()){
+            left.pop_back();
+            right.pop_front();
+        } else {
+            break;
+        }
     }
 
-    int bracket = *vec;
+    left.insert(left.end(),right.begin(),right.end());
 
-    // try open
-    can_close.push(bracket);
-    bool result = is_correct(vec+1,len-1,can_close);
-    if(result){
-        return true;
+    return left;
+}
+
+void put_tab(int n){
+    for(int _=0; _<n; _++){
+        cout << "\t";
     }
-    can_close.pop();
+}
 
-    // try close
-    if(can_close.empty()){
-        return false;
-    }
-    int last = can_close.top();
-
-    // can't close
-    if(last != bracket){
-        return false;
+list<int> simplify(list<int> &&brackets, int tab_size = 1){
+    if(brackets.size() <= 1){
+        return brackets;
     }
 
-    can_close.pop();
-    result = is_correct(vec+1,len-1,can_close);
-    if(result){
-        return true;
+    int split_at = brackets.size()/2;
+
+
+#ifdef DEBUG
+    put_tab(tab_size);cout << "===========================================================" << endl;
+
+    put_tab(tab_size);cout << "input: ";
+    for (const auto &s : brackets )std::cout << s << ' ';
+    std::cout << std::endl;
+#endif
+
+
+    list<int> left = std::move(brackets);
+    list<int> right = list<int>();
+
+    right.splice(right.begin(),left,std::next(left.begin(),split_at), left.end());
+
+#ifdef DEBUG
+    put_tab(tab_size);cout << "left: ";
+    for (const auto &s : left ) std::cout << s << ' ';
+    std::cout << std::endl;
+
+    put_tab(tab_size);cout << "right: ";
+    for (const auto &s : right ) std::cout << s << ' ';
+    std::cout << std::endl;
+#endif
+
+    if(left.size() > 1){
+        left = simplify(std::move(left),tab_size+1);
     }
-    can_close.push(bracket);
-    return false;
+    if(right.size() > 1){
+        right = simplify(std::move(right),tab_size+1);
+    }
+
+    list<int> to_return = merge_lists(std::move(left), std::move(right));
+
+#ifdef DEBUG
+    put_tab(tab_size);cout << "merged: ";
+    for (const auto &s : to_return )cout << s;
+    std::cout << std::endl;
+#endif
+
+    return to_return;
+}
+
+// is correct only if it gets simplified to 100%
+bool is_correct(list<int> &&brackets){
+    return simplify(std::move(brackets)).empty();
 }
 
 
@@ -52,19 +99,17 @@ int test_one(FILE* file){
 
     fscanf(file,"%d %d\n",&len, &kind);
 
-    stack<int> can_close = stack<int>();
 
-    int* array = new int[len];
+    list<int> brackets = list<int>();
 
     for(int i=0; i<len; i++){
-        fscanf(file, "%d", array+i);
+        int val;
+        fscanf(file, "%d", &val);
+        brackets.push_back(val);
     }
 
-    bool res = is_correct(array,len,can_close);
 
-    delete[] array;
-
-    return res;
+    return is_correct(move(brackets));
 }
 
 
