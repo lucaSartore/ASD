@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <list>
 
-
 //#define DEBUG
 //#define OUTPUT_FILE
 

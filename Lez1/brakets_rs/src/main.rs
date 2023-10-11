@@ -3,7 +3,6 @@ use std::fs::File;
 use std::io::Read;
 
 fn main() {
-
     // open the file
     let mut file = File::open("input.txt").unwrap();
 
@@ -62,7 +61,6 @@ fn simplify(sequence: LinkedList<usize>, tabs: usize) -> LinkedList<usize>{
         tb!(); println!("Input: {:?}", sequence);
     }
 
-
     let mut left = sequence;
     let mut right = left.split_off(left.len()/2);
 
@@ -70,7 +68,6 @@ fn simplify(sequence: LinkedList<usize>, tabs: usize) -> LinkedList<usize>{
         tb!(); println!("Left: {:?}", left);
         tb!(); println!("Right: {:?}", right);
     }
-
 
     if left.len() > 1{
         left = simplify(left,tabs+1);
@@ -89,7 +86,6 @@ fn simplify(sequence: LinkedList<usize>, tabs: usize) -> LinkedList<usize>{
     if PREVIEW{
         tb!(); println!("Merged : {:?}", merged);
     }
-
 
     merged
 }
