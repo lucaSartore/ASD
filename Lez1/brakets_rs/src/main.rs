@@ -1,6 +1,10 @@
 use std::collections::LinkedList;
 use std::fs::File;
 use std::io::Read;
+use std::time::{Duration, Instant};
+
+static mut TIME_SPENT_MERGE: Duration = Duration::new(0, 0);
+static mut TIME_SPENT_SPLIT: Duration = Duration::new(0, 0);
 
 fn main() {
     // open the file
@@ -27,7 +31,18 @@ fn main() {
         let mut sequence = numbers;
         numbers = sequence.split_off(num_brackets);
 
-        if simplify(sequence,0).is_empty(){
+        let start = Instant::now();
+        let result = simplify(sequence,0);
+        let end = Instant::now();
+
+        let duration = end-start;
+        println!("Execution time: rust {} us",duration.as_micros());
+        unsafe {
+            println!("\t Split is: {:2.2} % of the execution or {} us", TIME_SPENT_SPLIT.as_micros() as f64 / duration.as_micros() as f64 *100., TIME_SPENT_SPLIT.as_micros());
+            println!("\t Merge is: {:2.2} % of the execution or {} us", TIME_SPENT_MERGE.as_micros() as f64 / duration.as_micros() as f64*100., TIME_SPENT_MERGE.as_micros());
+        }
+
+        if result.is_empty(){
             println!("The sequence {i} was valid!")
         }else{
             println!("The sequence {i} was invalid!")
@@ -61,8 +76,14 @@ fn simplify(sequence: LinkedList<usize>, tabs: usize) -> LinkedList<usize>{
         tb!(); println!("Input: {:?}", sequence);
     }
 
+    let start = Instant::now();
     let mut left = sequence;
     let mut right = left.split_off(left.len()/2);
+    let end = Instant::now();
+
+    unsafe {
+        TIME_SPENT_SPLIT += end-start;
+    }
 
     if PREVIEW{
         tb!(); println!("Left: {:?}", left);
@@ -81,7 +102,13 @@ fn simplify(sequence: LinkedList<usize>, tabs: usize) -> LinkedList<usize>{
         tb!(); println!("Right simplified: {:?}", right);
     }
 
+    let start = Instant::now();
     let merged = merge(left,right);
+    let end = Instant::now();
+
+    unsafe {
+        TIME_SPENT_MERGE += end-start;
+    }
 
     if PREVIEW{
         tb!(); println!("Merged : {:?}", merged);

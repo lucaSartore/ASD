@@ -1,0 +1,7 @@
+Execution time C++: 105919 us
+         Split is: 0.0463467 % of the execution or 4909 us
+         Merge is: 0.202844 % of the execution or 21485 us
+
+Execution time: rust 18353 us
+         Split is: 29.04 % of the execution or 5329 us
+         Merge is: 23.47 % of the execution or 4308 us

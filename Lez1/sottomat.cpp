@@ -6,9 +6,6 @@
 #include <assert.h>
 using namespace std;
 
-
-
-
 int max_subarray(vector<int> &v){
 
     int integral = 0;

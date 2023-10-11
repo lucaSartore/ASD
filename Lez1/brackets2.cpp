@@ -4,6 +4,7 @@
 #include <stack>
 #include <stdio.h>
 #include <list>
+#include <chrono>
 
 //#define DEBUG
 //#define OUTPUT_FILE
@@ -11,6 +12,9 @@
 /// Funziona ma è troppo lento!!!
 
 using namespace std;
+
+chrono::duration<long long, ratio<1,1000000>> time_spent_merge = chrono::duration<long long, ratio<1,1000000>>(0);
+chrono::duration<long long, ratio<1,1000000>> time_spent_split = chrono::duration<long long, ratio<1,1000000>>(0);
 
 
 list<int> merge_lists(list<int> &&left, list<int> &&right){
@@ -39,12 +43,9 @@ void put_tab(int n){
 }
 
 list<int> simplify(list<int> &&brackets, int tab_size = 1){
-    if(brackets.size() <= 1){
-        return brackets;
-    }
 
+    auto start = chrono::high_resolution_clock::now();
     int split_at = brackets.size()/2;
-
 
 #ifdef DEBUG
     put_tab(tab_size);cout << "===========================================================" << endl;
@@ -54,11 +55,13 @@ list<int> simplify(list<int> &&brackets, int tab_size = 1){
     std::cout << std::endl;
 #endif
 
-
     list<int> left = std::move(brackets);
     list<int> right = list<int>();
 
-    right.splice(right.begin(),left,std::next(left.begin(),split_at), left.end());
+    right.splice(right.begin(),std::move(left),std::next(left.begin(),split_at), left.end());
+    auto stop = chrono::high_resolution_clock::now();
+
+    time_spent_split += chrono::duration_cast<chrono::microseconds>(stop - start);
 
 #ifdef DEBUG
     put_tab(tab_size);cout << "left: ";
@@ -77,7 +80,11 @@ list<int> simplify(list<int> &&brackets, int tab_size = 1){
         right = simplify(std::move(right),tab_size+1);
     }
 
+    start = chrono::high_resolution_clock::now();
     list<int> to_return = merge_lists(std::move(left), std::move(right));
+    stop = chrono::high_resolution_clock::now();
+
+    time_spent_merge += chrono::duration_cast<chrono::microseconds>(stop - start);
 
 #ifdef DEBUG
     put_tab(tab_size);cout << "merged: ";
@@ -90,7 +97,18 @@ list<int> simplify(list<int> &&brackets, int tab_size = 1){
 
 // is correct only if it gets simplified to 100%
 bool is_correct(list<int> &&brackets){
-    return simplify(std::move(brackets)).empty();
+
+    auto start = chrono::high_resolution_clock::now();
+    bool result = simplify(std::move(brackets)).empty();
+    auto stop = chrono::high_resolution_clock::now();
+
+
+    auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
+
+    cout << "Execution time C++: "<< duration.count() << " us" << endl;
+    cout << "\t Split is: "<< (float)time_spent_split.count()/duration.count() << " % of the execution or "<<  time_spent_split.count() << " us"<< endl;
+    cout << "\t Merge is: "<< (float)time_spent_merge.count()/duration.count() << " % of the execution or "<<  time_spent_merge.count() << " us" << endl;
+     return result;
 }
 
 
@@ -99,7 +117,6 @@ int test_one(FILE* file){
 
     fscanf(file,"%d %d\n",&len, &kind);
 
-
     list<int> brackets = list<int>();
 
     for(int i=0; i<len; i++){
@@ -107,7 +124,6 @@ int test_one(FILE* file){
         fscanf(file, "%d", &val);
         brackets.push_back(val);
     }
-
 
     return is_correct(move(brackets));
 }
@@ -126,7 +142,7 @@ int main() {
             val = 1;
         }
 #ifndef OUTPUT_FILE
-        if(output){
+        if(val){
             printf("The sequence %d was valid!\n",i);
         }else{
             printf("The sequence %d was invalid!\n",i);
