@@ -1,7 +1,38 @@
+without measuring the merge
+
 Execution time C++: 105919 us
          Split is: 0.0463467 % of the execution or 4909 us
-         Merge is: 0.202844 % of the execution or 21485 us
+         Merge function is: 0.202844 % of the execution or 21485 us
 
 Execution time: rust 18353 us
          Split is: 29.04 % of the execution or 5329 us
-         Merge is: 23.47 % of the execution or 4308 us
+         Merge function is: 23.47 % of the execution or 4308 us
+
+
+with measuring the mearge
+
+Execution time: rust 26461 us
+         Split is: 20.49 % of the execution or 5421 us
+         Merge is: 13.68 % of the execution or 3619 us
+         Merge function is: 46.62 % of the execution or 12337 us
+
+
+Execution time C++: 94446 us
+         Split is: 5.5185 % of the execution or 5212 us
+         Merge is: 17.8642 % of the execution or 16872 us
+         Merge function is: 0.198177 % of the execution or 18717 us
+
+
+without easting time measuring:
+
+Execution time: rust 3897 us
+         Split is: 0.00 % of the execution or 0 us
+         Merge is: 0.00 % of the execution or 0 us
+         Merge function is: 0.00 % of the execution or 0 us
+
+
+C:\Users\lucas\Desktop\ASD\Lez1\cmake-build-debug\Brackets2.exe
+Execution time C++: 71124 us
+         Split is: 0 % of the execution or 0 us
+         Merge is: 0 % of the execution or 0 us
+         Merge function is: 0 % of the execution or 0 us

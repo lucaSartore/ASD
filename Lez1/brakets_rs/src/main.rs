@@ -3,8 +3,9 @@ use std::fs::File;
 use std::io::Read;
 use std::time::{Duration, Instant};
 
-static mut TIME_SPENT_MERGE: Duration = Duration::new(0, 0);
+static mut TIME_SPENT_MERGE_FUNCTION: Duration = Duration::new(0, 0);
 static mut TIME_SPENT_SPLIT: Duration = Duration::new(0, 0);
+static mut TIME_SPENT_MERGE: Duration = Duration::new(0, 0);
 
 fn main() {
     // open the file
@@ -39,7 +40,8 @@ fn main() {
         println!("Execution time: rust {} us",duration.as_micros());
         unsafe {
             println!("\t Split is: {:2.2} % of the execution or {} us", TIME_SPENT_SPLIT.as_micros() as f64 / duration.as_micros() as f64 *100., TIME_SPENT_SPLIT.as_micros());
-            println!("\t Merge is: {:2.2} % of the execution or {} us", TIME_SPENT_MERGE.as_micros() as f64 / duration.as_micros() as f64*100., TIME_SPENT_MERGE.as_micros());
+            println!("\t Merge is: {:2.2} % of the execution or {} us", TIME_SPENT_MERGE.as_micros() as f64 / duration.as_micros() as f64 *100., TIME_SPENT_MERGE.as_micros());
+            println!("\t Merge function is: {:2.2} % of the execution or {} us", TIME_SPENT_MERGE_FUNCTION.as_micros() as f64 / duration.as_micros() as f64 *100., TIME_SPENT_MERGE_FUNCTION.as_micros());
         }
 
         if result.is_empty(){
@@ -62,9 +64,16 @@ fn merge(mut left: LinkedList<usize>,mut right: LinkedList<usize>) -> LinkedList
         left.pop_back();
         right.pop_front();
     }
+    //let start = Instant::now();
     left.append(&mut right);
+    /*
+    let end = Instant::now();
+    unsafe {
+        TIME_SPENT_MERGE += end-start;
+    }*/
     left
 }
+
 
 const PREVIEW: bool = false;
 
@@ -76,14 +85,14 @@ fn simplify(sequence: LinkedList<usize>, tabs: usize) -> LinkedList<usize>{
         tb!(); println!("Input: {:?}", sequence);
     }
 
-    let start = Instant::now();
+    //let start = Instant::now();
     let mut left = sequence;
     let mut right = left.split_off(left.len()/2);
-    let end = Instant::now();
-
+    //let end = Instant::now();
+    /*
     unsafe {
         TIME_SPENT_SPLIT += end-start;
-    }
+    }*/
 
     if PREVIEW{
         tb!(); println!("Left: {:?}", left);
@@ -102,13 +111,13 @@ fn simplify(sequence: LinkedList<usize>, tabs: usize) -> LinkedList<usize>{
         tb!(); println!("Right simplified: {:?}", right);
     }
 
-    let start = Instant::now();
+    //let start = Instant::now();
     let merged = merge(left,right);
-    let end = Instant::now();
-
+    //let end = Instant::now();
+    /*
     unsafe {
-        TIME_SPENT_MERGE += end-start;
-    }
+        TIME_SPENT_MERGE_FUNCTION += end-start;
+    }*/
 
     if PREVIEW{
         tb!(); println!("Merged : {:?}", merged);

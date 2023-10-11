@@ -13,8 +13,9 @@
 
 using namespace std;
 
-chrono::duration<long long, ratio<1,1000000>> time_spent_merge = chrono::duration<long long, ratio<1,1000000>>(0);
+chrono::duration<long long, ratio<1,1000000>> time_spent_merge_function = chrono::duration<long long, ratio<1,1000000>>(0);
 chrono::duration<long long, ratio<1,1000000>> time_spent_split = chrono::duration<long long, ratio<1,1000000>>(0);
+chrono::duration<long long, ratio<1,1000000>> time_spent_merging = chrono::duration<long long, ratio<1,1000000>>(0);
 
 
 list<int> merge_lists(list<int> &&left, list<int> &&right){
@@ -31,7 +32,11 @@ list<int> merge_lists(list<int> &&left, list<int> &&right){
         }
     }
 
+    //auto start = chrono::high_resolution_clock::now();
     left.insert(left.end(),right.begin(),right.end());
+    //auto stop = chrono::high_resolution_clock::now();
+
+    //time_spent_merging += chrono::duration_cast<chrono::microseconds>(stop - start);
 
     return left;
 }
@@ -44,7 +49,7 @@ void put_tab(int n){
 
 list<int> simplify(list<int> &&brackets, int tab_size = 1){
 
-    auto start = chrono::high_resolution_clock::now();
+    //auto start = chrono::high_resolution_clock::now();
     int split_at = brackets.size()/2;
 
 #ifdef DEBUG
@@ -59,9 +64,9 @@ list<int> simplify(list<int> &&brackets, int tab_size = 1){
     list<int> right = list<int>();
 
     right.splice(right.begin(),std::move(left),std::next(left.begin(),split_at), left.end());
-    auto stop = chrono::high_resolution_clock::now();
+    //auto stop = chrono::high_resolution_clock::now();
 
-    time_spent_split += chrono::duration_cast<chrono::microseconds>(stop - start);
+    //time_spent_split += chrono::duration_cast<chrono::microseconds>(stop - start);
 
 #ifdef DEBUG
     put_tab(tab_size);cout << "left: ";
@@ -80,11 +85,11 @@ list<int> simplify(list<int> &&brackets, int tab_size = 1){
         right = simplify(std::move(right),tab_size+1);
     }
 
-    start = chrono::high_resolution_clock::now();
+    //start = chrono::high_resolution_clock::now();
     list<int> to_return = merge_lists(std::move(left), std::move(right));
-    stop = chrono::high_resolution_clock::now();
+    //stop = chrono::high_resolution_clock::now();
 
-    time_spent_merge += chrono::duration_cast<chrono::microseconds>(stop - start);
+    //time_spent_merge_function += chrono::duration_cast<chrono::microseconds>(stop - start);
 
 #ifdef DEBUG
     put_tab(tab_size);cout << "merged: ";
@@ -106,9 +111,10 @@ bool is_correct(list<int> &&brackets){
     auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
 
     cout << "Execution time C++: "<< duration.count() << " us" << endl;
-    cout << "\t Split is: "<< (float)time_spent_split.count()/duration.count() << " % of the execution or "<<  time_spent_split.count() << " us"<< endl;
-    cout << "\t Merge is: "<< (float)time_spent_merge.count()/duration.count() << " % of the execution or "<<  time_spent_merge.count() << " us" << endl;
-     return result;
+    cout << "\t Split is: "<< (float)time_spent_split.count()/duration.count() * 100 << " % of the execution or "<<  time_spent_split.count() << " us"<< endl;
+    cout << "\t Merge is: " << (float)time_spent_merging.count() / duration.count()  * 100<< " % of the execution or " << time_spent_merging.count() << " us" << endl;
+    cout << "\t Merge function is: " << (float)time_spent_merge_function.count() / duration.count() << " % of the execution or " << time_spent_merge_function.count() << " us" << endl;
+    return result;
 }
 
 
