@@ -7,6 +7,7 @@
 
 
 //#define DEBUG
+//#define OUTPUT_FILE
 
 /// Funziona ma è troppo lento!!!
 
@@ -125,6 +126,14 @@ int main() {
         if (test_one(input)) {
             val = 1;
         }
+#ifndef OUTPUT_FILE
+        if(output){
+            printf("The sequence %d was valid!\n",i);
+        }else{
+            printf("The sequence %d was invalid!\n",i);
+        }
+#else
         fprintf(output, "%d\n", val);
+#endif
     }
 }
