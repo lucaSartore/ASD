@@ -34,7 +34,7 @@ fn main() {
     ptr_last = Solution::push(ptr_last, list!(100));
 
 
-    let final_list = Solution::merge_k_lists(vec![l1,l2,l3]);
+    let final_list = Solution::merge_k_lists(vec![l1,l2,l]);
     println!("{:?}", final_list);
 
 }
