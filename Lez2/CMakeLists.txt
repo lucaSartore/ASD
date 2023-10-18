@@ -6,4 +6,6 @@ set(CMAKE_BUILD_TYPE Debug)
 
 set(CMAKE_CXX_STANDARD 11)
 
-add_executable(MergeSort merge_sort/merge_sort.cpp)
+add_executable(MergeSort merge_sort/sort.cpp)
+add_executable(Intervals intervals/intervals.cpp)
+add_executable(Swapp swapp_sort/swapp.cpp)
