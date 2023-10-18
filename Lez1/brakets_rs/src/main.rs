@@ -8,6 +8,7 @@ static mut TIME_SPENT_SPLIT: Duration = Duration::new(0, 0);
 static mut TIME_SPENT_MERGE: Duration = Duration::new(0, 0);
 
 fn main() {
+
     // open the file
     let mut file = File::open("input.txt").unwrap();
 

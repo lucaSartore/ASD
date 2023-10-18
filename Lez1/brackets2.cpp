@@ -60,10 +60,10 @@ list<int> simplify(list<int> &&brackets, int tab_size = 1){
     std::cout << std::endl;
 #endif
 
-    list<int> left = std::move(brackets);
+    list<int> left = (list<int> &&) brackets;
     list<int> right = list<int>();
 
-    right.splice(right.begin(),std::move(left),std::next(left.begin(),split_at), left.end());
+    right.splice(right.begin(),left,std::next(left.begin(),split_at), left.end());
     //auto stop = chrono::high_resolution_clock::now();
 
     //time_spent_split += chrono::duration_cast<chrono::microseconds>(stop - start);
@@ -79,14 +79,14 @@ list<int> simplify(list<int> &&brackets, int tab_size = 1){
 #endif
 
     if(left.size() > 1){
-        left = simplify(std::move(left),tab_size+1);
+        left = simplify((list<int> &&)left,tab_size+1);
     }
     if(right.size() > 1){
-        right = simplify(std::move(right),tab_size+1);
+        right = simplify((list<int> &&) right,tab_size+1);
     }
 
     //start = chrono::high_resolution_clock::now();
-    list<int> to_return = merge_lists(std::move(left), std::move(right));
+    list<int> to_return = merge_lists((list<int> &&)left, (list<int> &&) right);
     //stop = chrono::high_resolution_clock::now();
 
     //time_spent_merge_function += chrono::duration_cast<chrono::microseconds>(stop - start);
