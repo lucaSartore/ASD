@@ -1,3 +1,5 @@
+
+
 #include <iostream>
 #include <vector>
 #include <unordered_set>
@@ -44,7 +46,7 @@ public:
         vector<vector<tuple<Factor,Factor>>> factors = vector<vector<tuple<Factor,Factor>>>();
         factors.reserve(size);
         for(int i=0; i < size; i++){
-            factors[i] = vector<tuple<Factor,Factor>>();
+            factors.push_back(vector<tuple<Factor,Factor>>());
         }
 
         // create a set of all available numbers to quickly check if a number is available
@@ -92,7 +94,7 @@ public:
             auto first = get<0>(factor_tuple);
             auto second = get<1>(factor_tuple);
 
-            combinations += numFactoredBinaryTreesRecursive(arr,first.factor_index,factors);
+            combinations += numFactoredBinaryTreesRecursive(arr,first.factor_index,factors) - 1;
             combinations %= 109 + 7;
 
             combinations += numFactoredBinaryTreesRecursive(arr,second.factor_index,factors);
@@ -106,7 +108,7 @@ public:
 
 
 int main(){
-    auto v = vector<int>{2,4};
+    auto v = vector<int>{45,42,2,18,23,1170,12,41,40,9,47,24,33,28,10,32,29,17,46,11,759,37,6,26,21,49,31,14,19,8,13,7,27,22,3,36,34,38,39,30,43,15,4,16,35,25,20,44,5,48};
 
     Solution s;
     cout << "combinations: " << s.numFactoredBinaryTrees(v) << endl;
