@@ -8,7 +8,6 @@
 
 using namespace std;
 
-
 class Factor{
 public:
     int factor;
@@ -78,29 +77,38 @@ public:
             }
         }
 
+        vector<unsigned long long int> cash =  vector<unsigned long long int>();
+        cash.reserve(size);
+        for(int i=0; i<size; i++){
+            cash[i] = -1;
+        }
+
         unsigned long long int  combination = 0;
         for(int i=0; i<size; i++){
-            combination += numFactoredBinaryTreesRecursive(arr,i,factors);
-            combination %= 109 + 7;
+            combination += trees_that_start_at_index(arr,i,factors, cash);
+            combination %= 1000000000 + 7;
         }
 
         return combination;
     }
 
-    unsigned long long int  numFactoredBinaryTreesRecursive(vector<int>& arr, int index, vector<vector<tuple<Factor,Factor>>>& factors){
+    unsigned long long int  trees_that_start_at_index(vector<int>& arr, int index, vector<vector<tuple<Factor,Factor>>>& factors,  vector<unsigned long long int>& cash){
+        if(cash[index] != -1){
+            return cash[index];
+        }
         // start from one combination... this one
         unsigned long long int combinations = 1;
         for(auto factor_tuple: factors[index]){
             auto first = get<0>(factor_tuple);
             auto second = get<1>(factor_tuple);
 
-            combinations += numFactoredBinaryTreesRecursive(arr,first.factor_index,factors) - 1;
-            combinations %= 109 + 7;
-
-            combinations += numFactoredBinaryTreesRecursive(arr,second.factor_index,factors);
-            combinations %= 109 + 7;
+            auto left = trees_that_start_at_index(arr,first.factor_index,factors, cash);
+            auto right = trees_that_start_at_index(arr,second.factor_index,factors, cash);
+            combinations += (left*right) % (1000000000 + 7);
+            combinations %= 1000000000 + 7;
         }
 
+        return cash[index] = combinations;
         return combinations;
     }
 
@@ -108,7 +116,9 @@ public:
 
 
 int main(){
-    auto v = vector<int>{45,42,2,18,23,1170,12,41,40,9,47,24,33,28,10,32,29,17,46,11,759,37,6,26,21,49,31,14,19,8,13,7,27,22,3,36,34,38,39,30,43,15,4,16,35,25,20,44,5,48};
+    //auto v = vector<int>{45,42,2,18,23,1170,12,41,40,9,47,24,33,28,10,32,29,17,46,11,759,37,6,26,21,49,31,14,19,8,13,7,27,22,3,36,34,38,39,30,43,15,4,16,35,25,20,44,5,48};
+    auto v = vector<int>{39,7,33,27,46,30,24,6,37,11,47,44,36,31,2,48,23,32,25,86,38,9,10,14,12,26,20,34,4,28,22,18,17,45,8,21,16,13,29,42,19,41,35,49,5,43,3,144,40,15};
+    //auto v = vector<int>{2,4,8,64};
 
     Solution s;
     cout << "combinations: " << s.numFactoredBinaryTrees(v) << endl;
