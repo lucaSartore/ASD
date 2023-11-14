@@ -1,6 +1,5 @@
 #include <iostream>
 #include <vector>
-
 using namespace std;
 
 class Node{
@@ -19,7 +18,7 @@ public:
     }
 
     void insert_adjacent_node(Node* node_to_insert){
-        // optional check the node is not already in the vector
+        // todo: check the node is not already in the vector
         adjacent_nodes.push_back(node_to_insert);
     }
 
