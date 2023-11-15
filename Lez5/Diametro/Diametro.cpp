@@ -60,71 +60,42 @@ public:
 };
 
 
-void propagate_distance(Graph& graph, int node_id, vector<bool>& visited, vector<int>& distance_v, vector<list<Node*>> & path_v){
+tuple<Node*,int> farthest_node_from(Graph& graph, Node* node){
+
+    vector<bool> visited = vector<bool>();
+    visited.reserve(graph.nodes.size());
+    for(int i=0; i<graph.nodes.size(); i++){
+        visited.push_back(false);
+    }
 
     // breath first search
-    queue<tuple<Node*,int>> order_visit = queue<tuple<Node*,int>>();
-    order_visit.push(tuple<Node*,int>(&graph.nodes[node_id],0));
+    queue<tuple<Node*,int>> order_visit = queue<tuple<Node*,int> >();
+    visited[node->value] = true;
+    order_visit.emplace(node,0);
 
-    visited[node_id] = true;
-    distance_v[node_id] = 0;
-    path_v[node_id].push_back(&graph.nodes[node_id]);
+    tuple<Node*,int> farthest_node = tuple<Node*,int>(node,0);
 
     while(!order_visit.empty()){
 
-        auto t = order_visit.front();
-        order_visit.pop();
+        auto t =  order_visit.front();
 
-        Node* node = get<0>(t);
+        Node* next_node = get<0>(t);
         int distance = get<1>(t);
 
-        for(auto adjacent: node->adjacent_nodes){
+        order_visit.pop();
+        farthest_node = t;
+
+        for(auto adjacent: next_node->adjacent_nodes){
             if(visited[adjacent->value]){
                 continue;
             }
             visited[adjacent->value] = true;
 
-            order_visit.push(tuple<Node*,int>(adjacent,distance+1));
-
-            distance_v[adjacent->value] = distance+1;
-            path_v[adjacent->value] = path_v[node->value];
-            path_v[adjacent->value].push_back(adjacent);
+            order_visit.emplace(adjacent,distance+1);
         }
     }
+    return farthest_node;
 }
-
-int not_in_common_distance(list<Node*>& path1, list<Node*>& path2){
-
-    int nodes_in_common = 0;
-
-    auto path_1_iter = path1.begin();
-    auto path_2_iter = path2.begin();
-
-    while ((*path_1_iter)->value == (*path_2_iter)->value){
-        nodes_in_common++;
-        path_1_iter++;
-        path_2_iter++;
-        if(path_1_iter == path1.end() || path_2_iter == path2.end()){
-            break;
-        }
-    }
-
-    bool triangle_condition = false;
-
-    auto n1_adjacent = &(*path_1_iter)->adjacent_nodes;
-    auto n2 = *path_1_iter;
-
-    if (std::find(n1_adjacent->begin(), n1_adjacent->end(), n2) != n1_adjacent->end()){
-        triangle_condition = true;
-    }
-
-    int distance = path1.size() + path2.size() + 1 - 2*nodes_in_common;
-    if(triangle_condition){
-        distance--;
-    }
-    return distance;
-}
-
 
 int main(){
     int n_nodes;
@@ -139,24 +110,6 @@ int main(){
 
     Graph graph(n_nodes);
 
-    vector<bool> visited = vector<bool>();
-    vector<int> distance = vector<int>();
-    // path[i] = list containing the shortest path between node 0 and node i
-    vector<list<Node*>> path = vector<list<Node*>>();
-
-    visited.reserve(n_nodes);
-    distance.reserve(n_nodes);
-    path.reserve(n_nodes);
-
-
-    for(int i=0; i<n_nodes; i++){
-        visited.push_back(false);
-        distance.push_back(UNKNOWN);
-        path.push_back(list<Node*>());
-    }
-
-    cout << visited;
-
     for(int i=0; i<n_edges; i++){
         int n1,n2;
         input >> n1;
@@ -164,27 +117,23 @@ int main(){
         graph.insert_double_edge(n1, n2);
     };
 
-    propagate_distance(graph,0,visited,distance,path);
+    // this node is in between the longest path
+    auto n1 = farthest_node_from(graph, &graph.nodes[0]);
 
-    int max_distance = 0;
+    // this node is one of the two extremis of the longest path
+    auto n2 = farthest_node_from(graph, get<0>(n1));
 
-    for(int i=0; i<n_nodes; i++){
-        for(int j=0; j<n_nodes; j++){
-            auto p1 = &path[i];
-            auto p2 = &path[j];
+    // this node is the other extremis on the longest pat
+    auto n3 = farthest_node_from(graph, get<0>(n2));
 
-            int d = not_in_common_distance(*p1,*p2);
+    int distance =  get<1>(n3);
 
-            max_distance = max(max_distance,d);
-        }
-    }
+    cout << "distance: " << distance;
 
-    cout << max_distance;
+    output << distance;
 
-    cout << visited;
-    cout << distance;
-    cout << path;
-    cout << graph.nodes;
+    output.close();
+    input.close();
 }
 
 
