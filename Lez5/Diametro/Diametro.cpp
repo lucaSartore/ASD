@@ -3,22 +3,34 @@
 #include <fstream>
 #include <iostream>
 
+// Nota: il grafo è connesso
+
 using namespace std;
+
+# define UNKNOWN -1
 
 class Node{
     public:
     int value;
     vector<Node*> adjacent_nodes;
+    vector<int> distance;
 
-    Node(int _value){
+    Node(int _value, int total_nodes){
         value = _value;
         adjacent_nodes = vector<Node*>();
+        distance = vector<int>();
+        distance.reserve(total_nodes);
+        for(int i=0; i<total_nodes; i++){
+            distance.push_back(UNKNOWN);
+        }
     }
 
-    void insert_adjacent_node(Node* node_to_insert){
+    void insert_adjacent_node(Node* node_to_insert) {
         adjacent_nodes.push_back(node_to_insert);
     }
 };
+
+
 
 class Graph{
 public:
@@ -28,43 +40,30 @@ public:
         nodes = vector<Node>();
         nodes.reserve(number_of_nodes);
         for(int i=0; i<number_of_nodes; i++){
-            nodes.push_back(Node(i));
+            nodes.push_back(Node(i,number_of_nodes));
         }
     }
 
     void insert_edge(int from, int to){
         nodes[from].insert_adjacent_node(&nodes[to]);
     }
-};
-
-
-
-
-
-int count_reachable(Graph& graph, int start_node, vector<bool>& visited, int counter){
-    for(auto node: graph.nodes[start_node].adjacent_nodes){
-        if(visited[node->value]){
-            continue;
-        }
-        visited[node->value] = true;
-        counter++;
-        counter = count_reachable(graph,node->value,visited,counter);
+    
+    void insert_double_edge(int n1, int n2){
+        insert_edge(n1,n2);
+        insert_edge(n2,n1);
     }
-    return counter;
-}
-
+};
 
 int main(){
     int n_nodes;
     int n_edges;
-    int start_node;
 
     ifstream input("input.txt");
     ofstream output("output.txt");
 
     input >> n_nodes;
     input >> n_edges;
-    input >> start_node;
+
 
     Graph graph(n_nodes);
     vector<bool> reachable = vector<bool>();
@@ -76,17 +75,6 @@ int main(){
         input >> to;
         graph.insert_edge(from, to);
         reachable.push_back(false);
-    }
-
-    reachable[start_node] = true;
-
-    int count = count_reachable(graph,start_node,reachable,1);
-
-    cout << "count: " << count;
-
-    output << count;
-
-    input.close();
-    output.close();
+    };
 
 }

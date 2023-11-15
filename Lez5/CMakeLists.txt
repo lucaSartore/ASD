@@ -7,3 +7,4 @@ set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CXX_STANDARD 11)
 
 add_executable(Visita Visita/Visita.cpp)
+add_executable(Diametro Diametro/Diametro.cpp)
