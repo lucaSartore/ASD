@@ -8,3 +8,4 @@ set(CMAKE_CXX_STANDARD 11)
 
 add_executable(Visita Visita/Visita.cpp)
 add_executable(Diametro Diametro/Diametro.cpp)
+add_executable(NumCammini num_cammini/num_cammini.cpp)
