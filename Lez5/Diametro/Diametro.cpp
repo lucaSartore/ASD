@@ -60,41 +60,44 @@ public:
 };
 
 
-tuple<Node*,int> farthest_node_from(Graph& graph, Node* node){
 
+
+int max_distance_to_all(Graph& graph, Node* node){
+
+    vector<int> to_return = vector<int>();
     vector<bool> visited = vector<bool>();
     visited.reserve(graph.nodes.size());
+    to_return.reserve(graph.nodes.size());
     for(int i=0; i<graph.nodes.size(); i++){
         visited.push_back(false);
+        to_return.push_back(0);
     }
 
     // breath first search
     queue<tuple<Node*,int>> order_visit = queue<tuple<Node*,int> >();
     visited[node->value] = true;
+    to_return[node->value] = 0;
     order_visit.emplace(node,0);
 
-    tuple<Node*,int> farthest_node = tuple<Node*,int>(node,0);
+    int max_distance = 0;
 
     while(!order_visit.empty()){
-
         auto t =  order_visit.front();
 
         Node* next_node = get<0>(t);
         int distance = get<1>(t);
-
         order_visit.pop();
-        farthest_node = t;
 
         for(auto adjacent: next_node->adjacent_nodes){
             if(visited[adjacent->value]){
                 continue;
             }
             visited[adjacent->value] = true;
-
+            max_distance = distance+1;
             order_visit.emplace(adjacent,distance+1);
         }
     }
-    return farthest_node;
+    return max_distance;
 }
 
 int main(){
@@ -117,20 +120,16 @@ int main(){
         graph.insert_double_edge(n1, n2);
     };
 
-    // this node is in between the longest path
-    auto n1 = farthest_node_from(graph, &graph.nodes[0]);
+    int max_distance = 0;
 
-    // this node is one of the two extremis of the longest path
-    auto n2 = farthest_node_from(graph, get<0>(n1));
+    for(int i=0; i<n_nodes; i++){
+        int new_distance = max_distance_to_all(graph,&graph.nodes[i]);
+        max_distance = max(new_distance,max_distance);
+    }
 
-    // this node is the other extremis on the longest pat
-    auto n3 = farthest_node_from(graph, get<0>(n2));
+    cout << "distance: " << max_distance;
 
-    int distance =  get<1>(n3);
-
-    cout << "distance: " << distance;
-
-    output << distance;
+    output << max_distance;
 
     output.close();
     input.close();
