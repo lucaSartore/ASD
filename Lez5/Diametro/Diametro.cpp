@@ -5,6 +5,7 @@
 #include <queue>
 #include <list>
 #include <tuple>
+#include <unordered_set>
 #include <algorithm>
 // Nota: il grafo è connesso
 
@@ -24,10 +25,19 @@ class Node{
     public:
     int value;
     vector<Node*> adjacent_nodes;
+    int reached_nodes;
+    int total_nodes;
+    unordered_set<int> nodes_reached_previous_turn;
+    unordered_set<int> nodes_reached_this_turn;
 
-    Node(int _value){
+    Node(int _value, int _total_nodes){
         value = _value;
+        reached_nodes = 1;
+        total_nodes = _total_nodes;
         adjacent_nodes = vector<Node*>();
+        nodes_reached_previous_turn = unordered_set<int>();
+        nodes_reached_previous_turn.insert(value);
+        nodes_reached_this_turn = unordered_set<int>();
     }
 
     void insert_adjacent_node(Node* node_to_insert) {
