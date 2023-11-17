@@ -59,6 +59,7 @@ int distance(Graph& graph, Node* node_from, Node* node_to){
     fill_distance_vector(graph, node_from, distance_vector);
     return distance_vector[node_to->value];
 }
+
 void fill_distance_vector(Graph& graph, Node* from,vector<int>& distance_vector){
     vector<bool> visited = vector<bool>();
     visited.reserve(graph.nodes.size());

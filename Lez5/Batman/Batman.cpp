@@ -47,6 +47,17 @@ public:
         adjacent_nodes_flipped.push_back(node_to_insert);
     }
 
+    int num_ways_to_reach_inverse(int start_node){
+        if(start_node == value){
+            return 1;
+        }
+        int to_return = 0;
+        for(auto node: adjacent_nodes_flipped){
+            to_return+= node->num_ways_to_reach_inverse(start_node);
+        }
+        return to_return;
+    }
+
 };
 
 class Graph{
@@ -64,6 +75,13 @@ public:
     void insert_edge(int from, int to){
         nodes[from].insert_adjacent_node(&nodes[to]);
         nodes[to].insert_adjacent_node_flipped(&nodes[from]);
+    }
+
+    bool is_edge_present(int from, int to){
+        return find(nodes[from].adjacent_nodes.begin(),
+             nodes[from].adjacent_nodes.end(),
+             &nodes[to]
+             ) != nodes[from].adjacent_nodes.end();
     }
 
 };
@@ -106,6 +124,7 @@ vector<bool> get_reachability_vector(Graph& graph, Node* start_node, Direction d
             if(adjacent_node->group!=UNKNOWN){
                 continue;
             }
+            has_been_pushed[adjacent_node->value] = true;
             to_visit.push(adjacent_node);
         }
     }
@@ -113,25 +132,25 @@ vector<bool> get_reachability_vector(Graph& graph, Node* start_node, Direction d
     return reachability_vector;
 }
 
-int divide_in_groups(Graph& graph){
+int divide_in_groups(Graph& graph) {
 
     int current_group_id = 0;
 
     const int size = graph.nodes.size();
 
-    for(int i=0; i<size; i++){
+    for (int i = 0; i < size; i++) {
 
-        Node* node = &graph.nodes[i];
+        Node *node = &graph.nodes[i];
 
-        if(node->group != UNKNOWN){
+        if (node->group != UNKNOWN) {
             continue;
         }
 
-        auto reachable = get_reachability_vector(graph, node,Direction::STRAIGHT);
-        auto reachable_flipped = get_reachability_vector(graph, node,Direction::FLIPPED);
+        auto reachable = get_reachability_vector(graph, node, Direction::STRAIGHT);
+        auto reachable_flipped = get_reachability_vector(graph, node, Direction::FLIPPED);
 
-        for(int j=0; j<size; j++){
-            if(reachable[j]&&reachable_flipped[j]){
+        for (int j = 0; j < size; j++) {
+            if (reachable[j] && reachable_flipped[j]) {
                 graph.nodes[j].group = current_group_id;
             }
         }
@@ -139,8 +158,9 @@ int divide_in_groups(Graph& graph){
         current_group_id++;
     }
 
-    return current_group_id+1;
+    return current_group_id + 1;
 }
+
 
 int main(){
     int n_nodes;
@@ -176,10 +196,24 @@ int main(){
     for(const auto& node: graph.nodes){
         for(auto adjacent_node: node.adjacent_nodes){
             if(node.group != adjacent_node->group){
-                group_graph.insert_edge(node.group,adjacent_node->group);
+                //if(!group_graph.is_edge_present(node.group,adjacent_node->group)){
+                    group_graph.insert_edge(node.group,adjacent_node->group);
+                //}
             }
         }
     }
+
+    int ways_to_reach = group_graph.nodes[group_pos_end].num_ways_to_reach_inverse(group_pos_start);
+
+    /*
+    cout << "ways_to_reach: " << ways_to_reach << endl;
+    cout << "start_pos: " << group_pos_start << endl;
+    cout << "end_pos: " << group_pos_end << endl;
+    cout << graph.nodes;
+    cout << group_graph.nodes;
+    */
+
+    output << ways_to_reach;
 
     output.close();
     input.close();
@@ -196,7 +230,11 @@ ostream & operator<<(ostream & os, list<Node*>& path){
 }
 
 ostream & operator<<(ostream & os, Node& node){
-    os << "{id:  " << node.value <<", group: "<< node.group << "}";
+    os << "{id:  " << node.value <<", group: "<< node.group << ", links: [";
+    for(auto l: node.adjacent_nodes){
+        os << l->value << ", ";
+    }
+    os << "]}";
     return os;
 }
 
