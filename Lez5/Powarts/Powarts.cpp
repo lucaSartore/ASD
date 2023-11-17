@@ -1,4 +1,4 @@
-#include <istream>
+  #include <istream>
 #include <vector>
 #include <fstream>
 #include <iostream>
@@ -19,6 +19,7 @@ using namespace std;
 class Node;
 
 ostream & operator<<(ostream & os, Node* node);
+ostream & operator<<(ostream & os, Node& node);
 ostream & operator<<(ostream & os, list<Node*>& path);
 template<typename T>
 ostream & operator<<(ostream & os, vector<T>& v);
@@ -87,6 +88,9 @@ public:
                 choke_points_temp = std::move(intersection);
             }
         }
+        if(distance_from_powarts!=0){
+            choke_points_temp.push_back(value);
+        }
         choke_points = vector<int>(choke_points_temp.begin(),choke_points_temp.end());
     }
 
@@ -134,9 +138,10 @@ public:
         if(begin == distance_to_consider.end()){
             return -1;
         }
+        int to_return = *begin;
         // remove the element from the set
         distance_to_consider.erase(begin);
-        return *begin;
+        return to_return;
     }
 };
 
@@ -166,9 +171,10 @@ public:
     }
 };
 
-void propagate_distance(Graph& graph, Node* start_node){
+vector<Node*> propagate_distance(Graph& graph, Node* start_node){
 
-    start_node->distance_from_powarts = 0;
+    vector<Node*> order_vector = vector<Node*>();
+    order_vector.reserve(graph.nodes.size());
 
     auto distance_to_consider = DistancesToConsider();
     auto distance_to_queue = DistanceToQueue();
@@ -198,11 +204,17 @@ void propagate_distance(Graph& graph, Node* start_node){
             continue;
         }
 
+        order_vector.push_back(next_node);
 
-
-
-
+        for(auto adjacent_node: next_node->adjacent_nodes) {
+            auto new_node = adjacent_node.node;
+            auto new_distance = adjacent_node.cost + current_distance;
+            distance_to_consider.insert_new_distance(new_distance);
+            distance_to_queue.insert_node(new_node, new_distance);
+        }
     }
+
+    return order_vector;
 }
 
 int main(){
@@ -228,7 +240,56 @@ int main(){
         graph.insert_double_edge(n1,n2,cost);
     }
 
-    propagate_distance(graph,&graph.nodes[powarts]);
+    vector<Node*> order_vector = propagate_distance(graph,&graph.nodes[powarts]);
+
+    for(Node* node: order_vector){
+        node->calculate_choke_points();
+    }
+
+    // count choke points;
+    vector<int> choke_points = vector<int>();
+    choke_points.reserve(graph.nodes.size());
+    for(int i=0; i<graph.nodes.size(); i++){
+        choke_points.push_back(0);
+    }
+
+    cout << order_vector;
+
+    for(Node* node: order_vector){
+        for(int choke_point: node->choke_points){
+            choke_points[choke_point]++;
+        }
+    }
+
+    int city_max_damage;
+    int max_city_choked = 0;
+
+    for(int i=0; i<graph.nodes.size(); i++){
+        if(choke_points[i] > max_city_choked){
+            max_city_choked = choke_points[i];
+            city_max_damage = i;
+        }
+    }
+
+    vector<int> list_city_choked = vector<int>();
+    list_city_choked.reserve(max_city_choked);
+
+    for(auto node: graph.nodes){
+        bool is_choked = (find(node.choke_points.begin(), node.choke_points.end(),
+                               city_max_damage) != node.choke_points.end());
+        if(is_choked){
+            list_city_choked.push_back(node.value);
+        }
+    }
+
+    cout << "The max num of cities blocked is: " << max_city_choked << endl;
+
+    cout << graph.nodes;
+
+    output << max_city_choked << endl;
+    for(int city: list_city_choked){
+        output << city << endl;
+    }
 
     output.close();
     input.close();
@@ -244,19 +305,24 @@ ostream & operator<<(ostream & os, list<Node*>& path){
     return os;
 }
 
-ostream & operator<<(ostream & os, Node* node){
-    os << "Node " << node->value;
+ostream & operator<<(ostream & os, Node& node){
+    os << "{id:  " << node.value <<", distance: " << node.distance_from_powarts << ", cp: [";
+    for(auto cp: node.choke_points){
+        os << cp << ", ";
+    }
+    os <<"]}";
     return os;
 }
-ostream & operator<<(ostream & os, Node node){
-    os << "Node " << node.value;
+
+ostream & operator<<(ostream & os, Node* node){
+    os << *node;
     return os;
 }
 
 
 template<typename T>
 ostream & operator<<(ostream & os, vector<T>& v){
-    os << "[";
+    os << "[" << endl;
     int c = 0;
     for(auto node: v){
         os << "\t" << c <<": " << node << "\n";
@@ -268,7 +334,7 @@ ostream & operator<<(ostream & os, vector<T>& v){
 
 template<typename T>
 ostream & operator<<(ostream & os, list<T>& v){
-    os << "[";
+    os << "[" << endl;
     int c = 0;
     for(auto node: v){
         os << "\t" << c <<": " << node << "\n";
