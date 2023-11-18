@@ -9,12 +9,12 @@
 #include <algorithm>
 #include <assert.h>
 #include <set>
+#include <execution>
 #include <unordered_map>
 
 using namespace std;
 
 # define UNKNOWN -1
-# define UNREACHABLE -1
 
 class Node;
 
@@ -31,34 +31,62 @@ public:
     int value;
     vector<Node*> adjacent_nodes;
     vector<Node*> adjacent_nodes_flipped;
+    unordered_map<Node*,int> counter_adjacent_nodes;
+    unordered_map<Node*,int> counter_adjacent_nodes_flipped;
     int group;
+    int discovery_time;
+    int closing_time;
+    int num_ways_to_reach;
 
     Node(int _value){
         value = _value;
         adjacent_nodes = vector<Node*>();
         adjacent_nodes = vector<Node*>();
         group = UNKNOWN;
+        discovery_time = UNKNOWN;
+        closing_time = UNKNOWN;
+        counter_adjacent_nodes = unordered_map<Node*,int>();
+        counter_adjacent_nodes_flipped = unordered_map<Node*,int>();
+        num_ways_to_reach = -1;
     }
 
     void insert_adjacent_node(Node* node_to_insert) {
+        // try insert 1
+        auto result = counter_adjacent_nodes.emplace(node_to_insert,1);
+        // if it already exist increase it by one.
+        if(!get<1>(result)){
+            counter_adjacent_nodes[node_to_insert]++;
+            return;
+        }
+        // insert the node
         adjacent_nodes.push_back(node_to_insert);
     }
     void  insert_adjacent_node_flipped(Node* node_to_insert) {
+        // try insert 1
+        auto result = counter_adjacent_nodes_flipped.emplace(node_to_insert,1);
+        // if it already exist increase it by one.
+        if(!get<1>(result)){
+            counter_adjacent_nodes_flipped[node_to_insert]++;
+            return;
+        }
+        // insert the node
         adjacent_nodes_flipped.push_back(node_to_insert);
     }
 
-    int num_ways_to_reach_inverse(int start_node){
-        if(start_node == value){
-            return 1;
+    int get_num_wats_to_reach(Node* node_to_reach){
+        if(num_ways_to_reach != UNKNOWN){
+            return num_ways_to_reach;
         }
-        int to_return = 0;
-        for(auto node: adjacent_nodes_flipped){
-            to_return+= node->num_ways_to_reach_inverse(start_node);
+        num_ways_to_reach = 0;
+        for(auto adjacent: adjacent_nodes_flipped){
+            num_ways_to_reach += adjacent->get_num_wats_to_reach(node_to_reach)*counter_adjacent_nodes_flipped[adjacent];
         }
-        return to_return;
+        return num_ways_to_reach;
     }
-
 };
+
+
+
 
 class Graph{
 public:
@@ -76,91 +104,71 @@ public:
         nodes[from].insert_adjacent_node(&nodes[to]);
         nodes[to].insert_adjacent_node_flipped(&nodes[from]);
     }
-
-    bool is_edge_present(int from, int to){
-        return find(nodes[from].adjacent_nodes.begin(),
-             nodes[from].adjacent_nodes.end(),
-             &nodes[to]
-             ) != nodes[from].adjacent_nodes.end();
-    }
-
 };
 
-enum Direction{STRAIGHT,FLIPPED};
+int current_time;
 
-vector<bool> get_reachability_vector(Graph& graph, Node* start_node, Direction direction){
-
-    vector<bool> reachability_vector = vector<bool>();
-    vector<bool> has_been_pushed = vector<bool>();
-    reachability_vector.reserve(graph.nodes.size());
-    has_been_pushed.reserve(graph.nodes.size());
-    for(int i=0; i<graph.nodes.size(); i++){
-        reachability_vector.push_back(false);
-        has_been_pushed.push_back(false);
-    }
-
-    queue<Node*> to_visit = queue<Node*>();
-    to_visit.push(start_node);
-    has_been_pushed[start_node->value] = true;
-
-    while (!to_visit.empty()){
-
-        auto next_node = to_visit.front();
-        to_visit.pop();
-
-        reachability_vector[next_node->value] = true;
-
-        vector<Node*>* adjacent_nodes;
-        if(direction == Direction::FLIPPED){
-            adjacent_nodes = &next_node->adjacent_nodes_flipped;
-        }else{
-            adjacent_nodes = &next_node->adjacent_nodes;
-        }
-
-        for(auto adjacent_node: *adjacent_nodes){
-            if(has_been_pushed[adjacent_node->value]){
-                continue;
-            }
-            if(adjacent_node->group!=UNKNOWN){
-                continue;
-            }
-            has_been_pushed[adjacent_node->value] = true;
-            to_visit.push(adjacent_node);
+void add_timestamp_recursive(Graph& graph, Node* current_node, vector<Node*>& visit_order){
+    current_node->discovery_time = current_time;
+    current_time++;
+    visit_order.push_back(current_node);
+    for(auto adjacent: current_node->adjacent_nodes){
+        if(adjacent->discovery_time == UNKNOWN){
+            add_timestamp_recursive(graph, adjacent, visit_order);
         }
     }
-
-    return reachability_vector;
+    current_node->closing_time = current_time;
+    current_time++;
 }
 
-int divide_in_groups(Graph& graph) {
+vector<Node*> add_timestamp(Graph& graph){
 
-    int current_group_id = 0;
+    current_time = 0;
 
-    const int size = graph.nodes.size();
+    vector<Node*> visit_order = vector<Node*>();
+    visit_order.reserve(graph.nodes.size());
 
-    for (int i = 0; i < size; i++) {
+    for(auto& node: graph.nodes){
+        if(node.discovery_time == UNKNOWN){;
+            add_timestamp_recursive(graph, &node, visit_order);
+        }
+    }
 
-        Node *node = &graph.nodes[i];
+    return visit_order;
+}
 
-        if (node->group != UNKNOWN) {
+
+void paint(Node* node_to_paint, Node* father_node, int color){
+    // if node_to_paint not reachable from father_node, return
+    if(node_to_paint->discovery_time < father_node->discovery_time ||
+        node_to_paint->closing_time > father_node->closing_time
+    ){
+        return;
+    }
+    if(node_to_paint->group == color){
+        return;
+    }
+    assert(node_to_paint->group == UNKNOWN);
+    node_to_paint->group = color;
+
+    for(auto adjacent_node: node_to_paint->adjacent_nodes_flipped){
+        paint(adjacent_node,father_node,color);
+    }
+}
+
+int divide_in_groups(Graph& graph, vector<Node*>& order_visit){
+
+    int group = 0;
+
+    for(auto node: order_visit){
+        if(node->group != UNKNOWN){
             continue;
         }
-
-        auto reachable = get_reachability_vector(graph, node, Direction::STRAIGHT);
-        auto reachable_flipped = get_reachability_vector(graph, node, Direction::FLIPPED);
-
-        for (int j = 0; j < size; j++) {
-            if (reachable[j] && reachable_flipped[j]) {
-                graph.nodes[j].group = current_group_id;
-            }
-        }
-
-        current_group_id++;
+        paint(node,node,group++);
     }
 
-    return current_group_id + 1;
+    return ++group;
 }
-
 
 int main(){
     int n_nodes;
@@ -185,7 +193,9 @@ int main(){
         graph.insert_edge(from,to);
     }
 
-    int num_group = divide_in_groups(graph);
+    vector<Node*> visit_order = add_timestamp(graph);
+
+    int num_group = divide_in_groups(graph,visit_order);
 
     int group_pos_start = graph.nodes[pos_start].group;
     int group_pos_end = graph.nodes[pos_end].group;
@@ -203,7 +213,9 @@ int main(){
         }
     }
 
-    int ways_to_reach = group_graph.nodes[group_pos_end].num_ways_to_reach_inverse(group_pos_start);
+    group_graph.nodes[group_pos_start].num_ways_to_reach = 1;
+
+    int ways_to_reach = group_graph.nodes[group_pos_end].get_num_wats_to_reach(&group_graph.nodes[group_pos_start]);
 
     /*
     cout << "ways_to_reach: " << ways_to_reach << endl;
@@ -214,6 +226,7 @@ int main(){
     */
 
     output << ways_to_reach;
+
 
     output.close();
     input.close();
@@ -230,7 +243,8 @@ ostream & operator<<(ostream & os, list<Node*>& path){
 }
 
 ostream & operator<<(ostream & os, Node& node){
-    os << "{id:  " << node.value <<", group: "<< node.group << ", links: [";
+    os << "{id:  " << node.value <<", group: "<< node.group <<
+    ", dt: " << node.discovery_time << ", ct: " << node.closing_time<< ", links: [";
     for(auto l: node.adjacent_nodes){
         os << l->value << ", ";
     }
