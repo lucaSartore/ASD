@@ -14,6 +14,7 @@
 using namespace std;
 
 # define UNKNOWN -1
+# define UNREACHABLE -2
 
 class Node;
 
@@ -34,15 +35,42 @@ class Node{
 public:
     int value;
     vector<Link> adjacent_nodes;
+    int min_distance_from_fab_lab;
+    int max_distance_from_fab_lab;
 
     Node(int _value){
         value = _value;
         adjacent_nodes = vector<Link>();
+        min_distance_from_fab_lab = UNKNOWN;
+        max_distance_from_fab_lab = UNKNOWN;
     }
 
     void insert_adjacent_node(Node* node_to_insert, int min_cost, int max_cost) {
         adjacent_nodes.emplace_back(node_to_insert,min_cost, max_cost);
     }
+
+    int get_min_distance_from_fab_lab(){
+        if(min_distance_from_fab_lab != UNKNOWN){
+            return min_distance_from_fab_lab;
+        }
+        min_distance_from_fab_lab = UNREACHABLE;
+
+        for(auto adjacent: adjacent_nodes){
+            int new_min_distance = adjacent.node->get_min_distance_from_fab_lab();
+            if(new_min_distance == UNREACHABLE){
+                continue;
+            }
+            new_min_distance+=adjacent.min_cost;
+            min_distance_from_fab_lab = min(min_distance_from_fab_lab,new_min_distance);
+        }
+        return min_distance_from_fab_lab;
+    }
+
+    int get_max_distance_from_fab_lab(){
+
+    }
+
+
 
 };
 
@@ -50,11 +78,11 @@ class Graph{
 public:
     vector<Node> nodes;
 
-    Graph(int number_of_nodes){
+    explicit Graph(int number_of_nodes){
         nodes = vector<Node>();
         nodes.reserve(number_of_nodes);
         for(int i=0; i<number_of_nodes; i++){
-            nodes.push_back(Node(i));
+            nodes.emplace_back(i);
         }
     }
 
