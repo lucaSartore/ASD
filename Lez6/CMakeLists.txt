@@ -9,3 +9,5 @@ set(CMAKE_CXX_STANDARD 11)
 add_executable(Componente Componente/componente.cpp)
 
 add_executable(TopologicalOrder TopologicalOrder/topological_order.cpp)
+
+add_executable(CamminoMax CamminoMax/cammina_max.cpp)
