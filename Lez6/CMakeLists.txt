@@ -11,3 +11,5 @@ add_executable(Componente Componente/componente.cpp)
 add_executable(TopologicalOrder TopologicalOrder/topological_order.cpp)
 
 add_executable(CamminoMax CamminoMax/cammina_max.cpp)
+
+add_executable(CicliCiclabili CicliCiclabili/cicli_ciclabili.cpp)
