@@ -125,8 +125,11 @@ public:
 
     void fill_has_same_color_of(){
         reset_discovery_time();
-        nodes[0].fill_has_same_color_of(nullptr);
-        //nodes[0].has_same_color_of = nullptr;
+        for(auto& node: nodes) {
+            if (node.has_same_color_of == nullptr) {
+                node.fill_has_same_color_of(nullptr);
+            }
+        }
     }
 
     // color the graph, and return te number of colors he found
@@ -158,7 +161,7 @@ public:
     // the distance is kept in the best case senareo (you start hopping from the right node)
     // it might be one hop longer if you start from the incorrect node
     vector<int> distance_from_node;
-    // if next_hop[10] = 3 it means that to reach the node 10, the best moove is to hop to node 3;
+    // if next_hop[10] = 3 it means that to reach the node 10, the best moove is to hop to node 3
     vector<int> next_hop;
 
     GroupNode(int _color,int n_nodes){
@@ -168,8 +171,11 @@ public:
         has_more_than_one_node = false;
         distance_from_node = vector<int>();
         distance_from_node.reserve(n_nodes);
+        next_hop = vector<int>();
+        next_hop.reserve(n_nodes);
         for(int i=0; i<n_nodes; i++){
             distance_from_node.push_back(-1);
+            next_hop.push_back(0);
         }
     }
 
@@ -191,7 +197,11 @@ public:
     }
 
     void propagate_distance(int distance_from, int coming_from){
-
+        if(!has_more_than_one_node){
+            next_hop[distance_from] = -1;
+        }else{
+            next_hop[distance_from] = (*color_to_border)[coming_from];
+        }
         // if this is the first node, or if this node is not in a cylce
         // all adjacent nodes need only one hop
         if(distance_from_node[distance_from] == 0 || !has_more_than_one_node){
@@ -340,6 +350,8 @@ int main(){
 
     GroupGraph group_graph = GroupGraph(n_color);
 
+    return 0;
+
     /// insert the hasmap only to the nodes that have more then one node to save memory
     vector<int> color_count = vector<int>();
     color_count.reserve(n_color);
@@ -350,6 +362,7 @@ int main(){
     for(auto& node: graph.nodes){
         color_count[node.color]++;
     }
+
     for(int i=0; i<n_color; i++){
         if(color_count[i]>1){
             group_graph.groups[i].has_more_than_one_node = true;
@@ -385,13 +398,24 @@ int main(){
         }
         if(color_from == color_to){
             output << 1 << endl;
+            continue;
         }
 
-        int base_distance = group_graph.groups[from].distance_from_node[to];
+        int base_distance = group_graph.groups[color_from].distance_from_node[color_to];
 
+        if(group_graph.groups[color_from].next_hop[color_to] != from &&
+            group_graph.groups[color_from].has_more_than_one_node
+        ){
+            base_distance++;
+        }
 
+        if(group_graph.groups[color_to].next_hop[color_from] != to &&
+            group_graph.groups[color_to].has_more_than_one_node
+        ){
+            base_distance++;
+        }
 
-
+        output << base_distance << endl;
     }
 
 
