@@ -148,90 +148,56 @@ public:
 
 };
 
+class GroupNode;
+
+struct Link{
+    GroupNode* to;
+    Node* linking_node;
+
+    Link(GroupNode* _to, Node* _linking_node){
+        to = _to;
+        linking_node = _linking_node;
+    }
+};
+
 class GroupNode{
 public:
-    vector<GroupNode*> adjacent_nodes;
+    vector<Link> adjacent_nodes;
     int color;
     bool visited;
-    // the key is the color of the sub component you whant to go to,
-    // the value is the value of the node you need to pass from to go there
-    unordered_map<int,int>* color_to_border;
-    bool has_more_than_one_node;
-    // keep the distance to every other node in the graph.
-    // the distance is kept in the best case senareo (you start hopping from the right node)
-    // it might be one hop longer if you start from the incorrect node
-    vector<int> distance_from_node;
-    // if next_hop[10] = 3 it means that to reach the node 10, the best moove is to hop to node 3
-    vector<int> next_hop;
 
     GroupNode(int _color,int n_nodes){
         color = _color;
         visited = false;
-        color_to_border = nullptr;
-        has_more_than_one_node = false;
-        distance_from_node = vector<int>();
-        distance_from_node.reserve(n_nodes);
-        next_hop = vector<int>();
-        next_hop.reserve(n_nodes);
-        for(int i=0; i<n_nodes; i++){
-            distance_from_node.push_back(-1);
-            next_hop.push_back(0);
-        }
     }
 
-    ~GroupNode(){
-        if(has_more_than_one_node){
-            delete color_to_border;
-        }
+
+    void insert_adjacent_group(GroupNode* adjacent, Node* border_node){
+        adjacent_nodes.push_back(Link(adjacent,border_node));
     }
 
-    void insert_adjacent_group(GroupNode* adjacent, int border_mode){
-        adjacent_nodes.push_back(adjacent);
+    int distance_from(Node* starting_node, Node* destination_node){
 
-        if(has_more_than_one_node){
-            if(color_to_border == nullptr){
-                color_to_border = new unordered_map<int,int>;
-            }
-            color_to_border->emplace(adjacent->color,border_mode);
+        if(starting_node == destination_node){
+            return 0;
         }
-    }
+        if(starting_node->color == destination_node->color){
+            return 1;
+        }
 
-    void propagate_distance(int distance_from, int coming_from){
-        if(!has_more_than_one_node){
-            next_hop[distance_from] = -1;
-        }else{
-            next_hop[distance_from] = (*color_to_border)[coming_from];
-        }
-        // if this is the first node, or if this node is not in a cylce
-        // all adjacent nodes need only one hop
-        if(distance_from_node[distance_from] == 0 || !has_more_than_one_node){
-            for(auto adjacent: adjacent_nodes){
-                if(adjacent->color == coming_from){
-                    continue;
+        for(auto& adjacent: adjacent_nodes){
+            int new_distance = adjacent.to->distance_from(adjacent.linking_node,destination_node);
+            if(new_distance != -1){
+                if(starting_node == adjacent.linking_node){
+                    return new_distance+1;
+                }else{
+                    return new_distance+2;
                 }
-                adjacent->distance_from_node[distance_from] = distance_from_node[distance_from] + 1;
-                adjacent->propagate_distance(distance_from,color);
             }
-            return;
         }
 
-        // if this node is in a cylce, it mightn be necessary to do an extra hop
-        for(auto adjacent: adjacent_nodes){
-            if(adjacent->color == coming_from){
-                continue;
-            }
-            int to_add;
-            if((*color_to_border)[coming_from] == (*color_to_border)[adjacent->color]){
-                to_add = 1;
-            }else{
-                to_add = 2;
-            }
-            adjacent->distance_from_node[distance_from] = distance_from_node[distance_from] + to_add;
-            adjacent->propagate_distance(distance_from,color);
-        }
 
     }
-
 };
 
 class GroupGraph{
