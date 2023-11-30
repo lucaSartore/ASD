@@ -38,31 +38,50 @@ public:
         adjacent_nodes.push_back(adjacent);
     }
 
-    void fill_has_same_color_of(Node* coming_from){
+    // return a pointer to the oldest node that he found
+    Node* fill_has_same_color_of(Node* coming_from){
 
         discovery_time = current_time;
         current_time++;
 
-        for(auto adjacent_node: adjacent_nodes) {
+        has_same_color_of = nullptr;
 
-            // base exploration case, the node has not been discovered
-            if (adjacent_node->discovery_time == -1) {
-                adjacent_node->fill_has_same_color_of(this);
-                continue;
-            }
+        // compute same color first, as this make shore that n
+        for(auto adjacent_node: adjacent_nodes) {
 
             if(adjacent_node == coming_from){
                 continue;
             }
 
-            // there is a cycle, and the node has been discovered
+            Node* new_has_same_color_of = nullptr;
 
-            if (has_same_color_of == nullptr) {
-                has_same_color_of = adjacent_node;
-            } else if (adjacent_node->discovery_time < has_same_color_of->discovery_time) {
-                has_same_color_of = adjacent_node;
+            if(adjacent_node->discovery_time == -1){
+                //need to discover the new node
+                new_has_same_color_of = adjacent_node->fill_has_same_color_of(this);
+                if(new_has_same_color_of == this){
+                    new_has_same_color_of = nullptr;
+                }
+            }else if(adjacent_node->discovery_time < discovery_time){
+                // if the node i am looking to has already been discovered, and has also been discovered before me
+                // then i have created a cycle, and he is the original generator
+                new_has_same_color_of = adjacent_node;
+            }
+
+            // now keep the same color that has been discovered earlyer
+            if(new_has_same_color_of == nullptr){
+                continue;
+            }
+            if(has_same_color_of == nullptr){
+                has_same_color_of = new_has_same_color_of;
+                continue;
+            }
+            // when i have two valid color, i take the earlyest one.
+            if(new_has_same_color_of->discovery_time < has_same_color_of->discovery_time){
+                has_same_color_of = new_has_same_color_of;
             }
         }
+
+        return has_same_color_of;
     }
 
     int get_color(){
@@ -77,7 +96,6 @@ public:
         current_color++;
         return color;
     }
-
 };
 
 
@@ -107,8 +125,8 @@ public:
 
     void fill_has_same_color_of(){
         reset_discovery_time();
-        nodes[0].fill_has_same_color_of(&nodes[0]);
-        nodes[0].has_same_color_of = nullptr;
+        nodes[0].fill_has_same_color_of(nullptr);
+        //nodes[0].has_same_color_of = nullptr;
     }
 
     // color the graph, and return te number of colors he found
@@ -134,17 +152,74 @@ public:
     bool visited;
     // the key is the color of the sub component you whant to go to,
     // the value is the value of the node you need to pass from to go there
-    unordered_map<int,int> color_to_border;
+    unordered_map<int,int>* color_to_border;
+    bool has_more_than_one_node;
+    // keep the distance to every other node in the graph.
+    // the distance is kept in the best case senareo (you start hopping from the right node)
+    // it might be one hop longer if you start from the incorrect node
+    vector<int> distance_from_node;
+    // if next_hop[10] = 3 it means that to reach the node 10, the best moove is to hop to node 3;
+    vector<int> next_hop;
 
-    GroupNode(int _color){
+    GroupNode(int _color,int n_nodes){
         color = _color;
         visited = false;
-        color_to_border = unordered_map<int,int>();
+        color_to_border = nullptr;
+        has_more_than_one_node = false;
+        distance_from_node = vector<int>();
+        distance_from_node.reserve(n_nodes);
+        for(int i=0; i<n_nodes; i++){
+            distance_from_node.push_back(-1);
+        }
+    }
+
+    ~GroupNode(){
+        if(has_more_than_one_node){
+            delete color_to_border;
+        }
     }
 
     void insert_adjacent_group(GroupNode* adjacent, int border_mode){
         adjacent_nodes.push_back(adjacent);
-        color_to_border.emplace(adjacent->color,border_mode);
+
+        if(has_more_than_one_node){
+            if(color_to_border == nullptr){
+                color_to_border = new unordered_map<int,int>;
+            }
+            color_to_border->emplace(adjacent->color,border_mode);
+        }
+    }
+
+    void propagate_distance(int distance_from, int coming_from){
+
+        // if this is the first node, or if this node is not in a cylce
+        // all adjacent nodes need only one hop
+        if(distance_from_node[distance_from] == 0 || !has_more_than_one_node){
+            for(auto adjacent: adjacent_nodes){
+                if(adjacent->color == coming_from){
+                    continue;
+                }
+                adjacent->distance_from_node[distance_from] = distance_from_node[distance_from] + 1;
+                adjacent->propagate_distance(distance_from,color);
+            }
+            return;
+        }
+
+        // if this node is in a cylce, it mightn be necessary to do an extra hop
+        for(auto adjacent: adjacent_nodes){
+            if(adjacent->color == coming_from){
+                continue;
+            }
+            int to_add;
+            if((*color_to_border)[coming_from] == (*color_to_border)[adjacent->color]){
+                to_add = 1;
+            }else{
+                to_add = 2;
+            }
+            adjacent->distance_from_node[distance_from] = distance_from_node[distance_from] + to_add;
+            adjacent->propagate_distance(distance_from,color);
+        }
+
     }
 
 };
@@ -157,7 +232,7 @@ public:
         groups = vector<GroupNode>();
         groups.reserve(n_groups);
         for(int i=0; i<n_groups; i++){
-            groups.emplace_back(i);
+            groups.emplace_back(i,n_groups);
         }
     }
 
@@ -245,7 +320,6 @@ int main(){
 
     int n_nodes, n_links, n_questions;
 
-    cout << sizeof(Node) << endl;
 
     ifstream input("input.txt");
     ofstream output("output.txt");
@@ -264,16 +338,23 @@ int main(){
     graph.fill_has_same_color_of();
     int n_color = graph.color_graph();
 
-    //cout << graph.nodes;
-
-    for(int i=0; i<n_questions; i++){
-        output << "1" << endl;
-    }
-    output.close();
-    input.close();
-    return 0;
-
     GroupGraph group_graph = GroupGraph(n_color);
+
+    /// insert the hasmap only to the nodes that have more then one node to save memory
+    vector<int> color_count = vector<int>();
+    color_count.reserve(n_color);
+    for(int i=0; i<n_color; i++){
+        color_count.push_back(0);
+    }
+
+    for(auto& node: graph.nodes){
+        color_count[node.color]++;
+    }
+    for(int i=0; i<n_color; i++){
+        if(color_count[i]>1){
+            group_graph.groups[i].has_more_than_one_node = true;
+        }
+    }
 
     for(auto& node: graph.nodes) {
         for (auto adjacent: node.adjacent_nodes) {
@@ -283,56 +364,39 @@ int main(){
         }
     }
 
-    for(int i=0; i<n_questions; i++){
-        int from, to;
+    for(auto& group: group_graph.groups){
+        group.distance_from_node[group.color] = 0;
+        group.propagate_distance(group.color,group.color);
+    }
 
+    for(int i=0; i<n_questions; i++){
+
+        int from,to;
         input >> from >> to;
 
-        int from_color = graph.nodes[from].color;
-        int to_color = graph.nodes[to].color;
+        int color_from,color_to;
+        color_from = graph.nodes[from].color;
+        color_to = graph.nodes[to].color;
 
-        auto path = group_graph.best_path(from_color,to_color);
-
-        //cout << "from " << from << " to " << to << ": " << path;
-
-        int current_node = from;
-        int current_color_index = 0;
-        int current_steps = 0;
-
-        while (true){
-            // i am in the correct cycle
-            if(path[current_color_index] == to_color){
-
-                // i am in the correct node
-                if(current_node == to){
-                    break;
-                }
-
-                // need one more step to go to the correct node
-                current_steps++;
-                break;
-            }
-
-            // i am not in the final node
-            int next_node = path[current_color_index+1];
-
-            int border_node = group_graph.groups[path[current_color_index]].color_to_border[next_node];
-
-            // i am already in the correct position to hop
-            if(current_node == border_node){
-                current_steps++;
-                current_node = group_graph.groups[next_node].color_to_border[path[current_color_index]];
-                current_color_index++;
-            }else{
-                // i need to do an internal hop
-                current_steps++;
-                current_node = border_node;
-            }
+        // basic cases
+        if(from == to){
+            output << 0 << endl;
+            continue;
+        }
+        if(color_from == color_to){
+            output << 1 << endl;
         }
 
-        cout << current_steps << endl;
-        output << current_steps << endl;
+        int base_distance = group_graph.groups[from].distance_from_node[to];
+
+
+
+
     }
+
+
+    output.close();
+    input.close();
 
 }
 
