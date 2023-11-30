@@ -125,11 +125,12 @@ public:
 
     void fill_has_same_color_of(){
         reset_discovery_time();
-        for(auto& node: nodes) {
+        nodes[0].fill_has_same_color_of(nullptr);
+        /*for(auto& node: nodes) {
             if (node.has_same_color_of == nullptr) {
                 node.fill_has_same_color_of(nullptr);
             }
-        }
+        }*/
     }
 
     // color the graph, and return te number of colors he found
@@ -152,11 +153,13 @@ class GroupNode;
 
 struct Link{
     GroupNode* to;
-    Node* linking_node;
+    Node* linking_node_from;
+    Node* linking_node_to;
 
-    Link(GroupNode* _to, Node* _linking_node){
+    Link(GroupNode* _to, Node* _linking_node_from, Node* _linking_node_to){
         to = _to;
-        linking_node = _linking_node;
+        linking_node_from = _linking_node_from;
+        linking_node_to = _linking_node_to;
     }
 };
 
@@ -172,11 +175,11 @@ public:
     }
 
 
-    void insert_adjacent_group(GroupNode* adjacent, Node* border_node){
-        adjacent_nodes.push_back(Link(adjacent,border_node));
+    void insert_adjacent_group(GroupNode* adjacent, Node* linking_node_from, Node* linking_node_to){
+        adjacent_nodes.push_back(Link(adjacent,linking_node_from,linking_node_to));
     }
 
-    int distance_from(Node* starting_node, Node* destination_node){
+    int distance_from(GroupNode* coming_from,Node* starting_node, Node* destination_node){
 
         if(starting_node == destination_node){
             return 0;
@@ -186,17 +189,19 @@ public:
         }
 
         for(auto& adjacent: adjacent_nodes){
-            int new_distance = adjacent.to->distance_from(adjacent.linking_node,destination_node);
+            if(adjacent.to == coming_from){
+                continue;
+            }
+            int new_distance = adjacent.to->distance_from(this, adjacent.linking_node_to, destination_node);
             if(new_distance != -1){
-                if(starting_node == adjacent.linking_node){
+                if(starting_node == adjacent.linking_node_from){
                     return new_distance+1;
                 }else{
                     return new_distance+2;
                 }
             }
         }
-
-
+        return -1;
     }
 };
 
@@ -215,73 +220,8 @@ public:
     void insert_link(Node* from, Node* to){
         int color_from = from->color;
         int color_to = to->color;
-        int link_node = from->value;
-        groups[color_from].insert_adjacent_group(&groups[color_to],link_node);
-    }
-
-    vector<int> best_path(int from, int to){
-
-        if(from == to){
-            auto v = vector<int>();
-            v.push_back(from);
-            return v;
-        }
-
-        reset_visited();
-
-        queue<GroupNode*> to_visit = queue<GroupNode*>();
-
-        vector<GroupNode*> hwo_pushed_me = vector<GroupNode*>();
-        hwo_pushed_me.reserve(groups.size());
-        for(int i=0; i<groups.size(); i++){
-            hwo_pushed_me.push_back(nullptr);
-        }
-
-        to_visit.push(&groups[from]);
-        groups[from].visited = true;
-
-        bool has_been_found = false;
-
-        while (!has_been_found){
-
-
-            GroupNode* current_node = to_visit.front();
-            to_visit.pop();
-
-            for(auto adjacent: current_node->adjacent_nodes){
-                if(adjacent->visited){
-                    continue;
-                }
-
-                to_visit.push(adjacent);
-                adjacent->visited = true;
-                hwo_pushed_me[adjacent->color] = current_node;
-
-                if(adjacent->color == to){
-                    has_been_found = true;
-                    break;
-                }
-            }
-        }
-
-        vector<int> to_return = vector<int>();
-
-        int current = to;
-
-        while (true){
-
-            to_return.push_back(current);
-
-            if(current == from){
-                break;
-            }
-
-            current = hwo_pushed_me[current]->color;
-        }
-
-        reverse(to_return.begin(),to_return.end());
-
-        return to_return;
+        groups[color_from].insert_adjacent_group(&groups[color_to],from,to);
+        groups[color_to].insert_adjacent_group(&groups[color_from],to,from);
     }
 
     void reset_visited(){
@@ -316,24 +256,7 @@ int main(){
 
     GroupGraph group_graph = GroupGraph(n_color);
 
-    return 0;
-
-    /// insert the hasmap only to the nodes that have more then one node to save memory
-    vector<int> color_count = vector<int>();
-    color_count.reserve(n_color);
-    for(int i=0; i<n_color; i++){
-        color_count.push_back(0);
-    }
-
-    for(auto& node: graph.nodes){
-        color_count[node.color]++;
-    }
-
-    for(int i=0; i<n_color; i++){
-        if(color_count[i]>1){
-            group_graph.groups[i].has_more_than_one_node = true;
-        }
-    }
+    cout << graph.nodes << endl;
 
     for(auto& node: graph.nodes) {
         for (auto adjacent: node.adjacent_nodes) {
@@ -343,47 +266,19 @@ int main(){
         }
     }
 
-    for(auto& group: group_graph.groups){
-        group.distance_from_node[group.color] = 0;
-        group.propagate_distance(group.color,group.color);
-    }
-
     for(int i=0; i<n_questions; i++){
-
         int from,to;
         input >> from >> to;
 
-        int color_from,color_to;
-        color_from = graph.nodes[from].color;
-        color_to = graph.nodes[to].color;
+        Node* node_from = &graph.nodes[from];
+        Node* node_to = &graph.nodes[to];
 
-        // basic cases
-        if(from == to){
-            output << 0 << endl;
-            continue;
-        }
-        if(color_from == color_to){
-            output << 1 << endl;
-            continue;
-        }
+        int color_from = node_from->color;
 
-        int base_distance = group_graph.groups[color_from].distance_from_node[color_to];
+        int cost = group_graph.groups[color_from].distance_from(nullptr,node_from,node_to);
 
-        if(group_graph.groups[color_from].next_hop[color_to] != from &&
-            group_graph.groups[color_from].has_more_than_one_node
-        ){
-            base_distance++;
-        }
-
-        if(group_graph.groups[color_to].next_hop[color_from] != to &&
-            group_graph.groups[color_to].has_more_than_one_node
-        ){
-            base_distance++;
-        }
-
-        output << base_distance << endl;
+        output << cost << endl;
     }
-
 
     output.close();
     input.close();
