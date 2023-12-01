@@ -9,11 +9,14 @@ using namespace std;
 
 
 class Node;
+class GroupNode;
 
 ostream & operator<<(ostream & os, Node* node);
 ostream & operator<<(ostream & os, Node& node);
 template<typename T>
 ostream & operator<<(ostream & os, vector<T>& v);
+ostream & operator<<(ostream & os, GroupNode* node);
+ostream & operator<<(ostream & os, GroupNode& node);
 
 
 int current_time;
@@ -222,6 +225,9 @@ public:
     }
 
     void path_to_reach(vector<int>& path, GroupNode* node_to_reach){
+
+        //cout << "Visiting: " << this << endl;
+        //cout << "Target: " << node_to_reach << endl;
         if(this == node_to_reach){
             return;
         }
@@ -236,11 +242,12 @@ public:
             int link_ft = link.to->finish_time;
 
             // case 1, the node is down a tree branch
-            if(target_dt >= link_dt  && target_ft <= link_ft){
+            if(target_dt >= link_dt  && target_ft <= link_ft && link_dt > discovery_time){
                 if(path.back() != link.linking_node_from->value){
                     path.push_back(link.linking_node_from->value);
                 }
                 path.push_back(link.linking_node_to->value);
+                //cout << "case 1" << endl;
                 link.to->path_to_reach(path, node_to_reach);
                 return;
             }
@@ -252,6 +259,7 @@ public:
         }
 
         // case 2, i need to go up the tree
+        //cout << "case 2" << endl;
         if(path.back() != father.linking_node_from->value){
             path.push_back(father.linking_node_from->value);
         }
@@ -309,7 +317,6 @@ int main(){
 
     Graph graph = Graph(n_nodes);
 
-    cout << graph.nodes << endl;
 
     for(int i=0; i<n_links; i++){
         int n1,n2;
@@ -317,7 +324,6 @@ int main(){
         graph.insert_link(n1,n2);
     }
 
-    cout << graph.nodes << endl;
 
     // calculate the color (aka the fully connected part of the graph
     graph.fill_has_same_color_of();
@@ -325,7 +331,7 @@ int main(){
 
     GroupGraph group_graph = GroupGraph(n_color);
 
-    cout << graph.nodes << endl;
+    //cout << graph.nodes << endl;
 
     for(auto& node: graph.nodes) {
         for (auto adjacent: node.adjacent_nodes) {
@@ -336,6 +342,8 @@ int main(){
     }
 
     group_graph.insert_times();
+
+    //cout << group_graph.groups << endl;
 
     for(int i=0; i<n_questions; i++){
         int from,to;
@@ -382,5 +390,13 @@ ostream & operator<<(ostream & os, vector<T>& v){
         c++;
     }
     os << "]\n";
+    return os;
+}
+
+ostream & operator<<(ostream & os, GroupNode* node){
+    return os << *node;
+}
+ostream & operator<<(ostream & os, GroupNode& node){
+    os << "{color: "<< node.color << " dt: " << node.discovery_time << " ft: " << node.finish_time << "}";
     return os;
 }
