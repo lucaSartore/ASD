@@ -167,11 +167,13 @@ class GroupNode{
 public:
     vector<Link> adjacent_nodes;
     int color;
-    bool visited;
+    int discovery_time;
+    int finish_time;
 
     GroupNode(int _color,int n_nodes){
         color = _color;
-        visited = false;
+        discovery_time = -1;
+        finish_time = -1;
     }
 
 
@@ -203,6 +205,60 @@ public:
         }
         return -1;
     }
+
+    void dept_first_visit(){
+
+        discovery_time = current_time;
+        current_time++;
+
+        for(auto& adjacent: adjacent_nodes){
+            if(adjacent.to->discovery_time != -1){
+                continue;
+            }
+            adjacent.to->dept_first_visit();
+        }
+        finish_time = current_time;
+        current_time++;
+    }
+
+    void path_to_reach(vector<int>& path, GroupNode* node_to_reach){
+        if(this == node_to_reach){
+            return;
+        }
+        int target_dt = node_to_reach->discovery_time;
+        int target_ft = node_to_reach->finish_time;
+
+        Link father = Link(this, nullptr, nullptr);
+
+        for(auto& link: adjacent_nodes){
+
+            int link_dt = link.to->discovery_time;
+            int link_ft = link.to->finish_time;
+
+            // case 1, the node is down a tree branch
+            if(target_dt >= link_dt  && target_ft <= link_ft){
+                if(path.back() != link.linking_node_from->value){
+                    path.push_back(link.linking_node_from->value);
+                }
+                path.push_back(link.linking_node_to->value);
+                link.to->path_to_reach(path, node_to_reach);
+                return;
+            }
+
+            if(link_dt < father.to->discovery_time){
+                father = link;
+            }
+
+        }
+
+        // case 2, i need to go up the tree
+        if(path.back() != father.linking_node_from->value){
+            path.push_back(father.linking_node_from->value);
+        }
+        path.push_back(father.linking_node_to->value);
+        father.to->path_to_reach(path, node_to_reach);
+    }
+
 };
 
 class GroupGraph{
@@ -224,10 +280,19 @@ public:
         groups[color_to].insert_adjacent_group(&groups[color_from],to,from);
     }
 
-    void reset_visited(){
-        for(auto& group: groups){
-            group.visited = false;
+    void insert_times(){
+        current_time = 0;
+        groups[0].dept_first_visit();
+    }
+
+    vector<int> find_path(Node* from, Node* to){
+        vector<int> path = vector<int>();
+        path.push_back(from->value);
+        groups[from->color].path_to_reach(path, &groups[to->color]);
+        if(to->value != path.back()){
+            path.push_back(to->value);
         }
+        return path;
     }
 
 };
@@ -266,6 +331,8 @@ int main(){
         }
     }
 
+    group_graph.insert_times();
+
     for(int i=0; i<n_questions; i++){
         int from,to;
         input >> from >> to;
@@ -273,11 +340,10 @@ int main(){
         Node* node_from = &graph.nodes[from];
         Node* node_to = &graph.nodes[to];
 
-        int color_from = node_from->color;
-
-        int cost = group_graph.groups[color_from].distance_from(nullptr,node_from,node_to);
-
-        output << cost << endl;
+        //cout << "From: " << from << " to: " << to << endl;
+        auto path = group_graph.find_path(node_from,node_to);
+        output << path.size()-1 << endl;
+        //cout << path << endl;
     }
 
     output.close();
