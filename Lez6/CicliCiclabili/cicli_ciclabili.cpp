@@ -277,7 +277,7 @@ public:
         int color_from = from->color;
         int color_to = to->color;
         groups[color_from].insert_adjacent_group(&groups[color_to],from,to);
-        groups[color_to].insert_adjacent_group(&groups[color_from],to,from);
+        //groups[color_to].insert_adjacent_group(&groups[color_from],to,from);
     }
 
     void insert_times(){
