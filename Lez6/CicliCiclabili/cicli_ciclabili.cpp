@@ -309,11 +309,15 @@ int main(){
 
     Graph graph = Graph(n_nodes);
 
+    cout << graph.nodes << endl;
+
     for(int i=0; i<n_links; i++){
         int n1,n2;
         input >> n1 >> n2;
         graph.insert_link(n1,n2);
     }
+
+    cout << graph.nodes << endl;
 
     // calculate the color (aka the fully connected part of the graph
     graph.fill_has_same_color_of();
