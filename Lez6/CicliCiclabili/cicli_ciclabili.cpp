@@ -119,15 +119,10 @@ public:
         nodes[n2].insert_adjacent_node(&nodes[n1]);
     }
 
-    void reset_discovery_time(){
-        current_time = 0;
-        for(auto& node: nodes){
-            node.discovery_time = -1;
-        }
-    }
+
 
     void fill_has_same_color_of(){
-        reset_discovery_time();
+        current_time = 0;
         nodes[0].fill_has_same_color_of(nullptr);
         /*for(auto& node: nodes) {
             if (node.has_same_color_of == nullptr) {
@@ -155,67 +150,64 @@ public:
 class GroupNode;
 
 struct Link{
+public:
     GroupNode* to;
     Node* linking_node_from;
     Node* linking_node_to;
+
+    Link(){
+        to = nullptr;
+        linking_node_from = nullptr;
+        linking_node_to = nullptr;
+    }
 
     Link(GroupNode* _to, Node* _linking_node_from, Node* _linking_node_to){
         to = _to;
         linking_node_from = _linking_node_from;
         linking_node_to = _linking_node_to;
     }
+
+    inline bool is_null(){
+        return to == nullptr;
+    }
 };
 
-class GroupNode{
+class GroupNode {
 public:
     vector<Link> adjacent_nodes;
+    Link father_intersection;
     int color;
     int discovery_time;
     int finish_time;
+    bool is_root;
+    int distance_from_root;
 
-    GroupNode(int _color,int n_nodes){
+    GroupNode(int _color) {
         color = _color;
         discovery_time = -1;
         finish_time = -1;
+        adjacent_nodes = vector<Link>();
+        father_intersection = Link(nullptr, nullptr, nullptr);
+        is_root = false;
+        distance_from_root = -1;
     }
 
-
-    void insert_adjacent_group(GroupNode* adjacent, Node* linking_node_from, Node* linking_node_to){
-        adjacent_nodes.push_back(Link(adjacent,linking_node_from,linking_node_to));
+    void insert_adjacent_group(GroupNode *adjacent, Node *linking_node_from, Node *linking_node_to) {
+        adjacent_nodes.push_back(Link(adjacent, linking_node_from, linking_node_to));
     }
 
-    int distance_from(GroupNode* coming_from,Node* starting_node, Node* destination_node){
-
-        if(starting_node == destination_node){
-            return 0;
-        }
-        if(starting_node->color == destination_node->color){
-            return 1;
-        }
-
-        for(auto& adjacent: adjacent_nodes){
-            if(adjacent.to == coming_from){
-                continue;
-            }
-            int new_distance = adjacent.to->distance_from(this, adjacent.linking_node_to, destination_node);
-            if(new_distance != -1){
-                if(starting_node == adjacent.linking_node_from){
-                    return new_distance+1;
-                }else{
-                    return new_distance+2;
-                }
-            }
-        }
-        return -1;
+    // this node is an itersection if it hase more that 3 adjacent nodes
+    bool is_intersection() {
+        return adjacent_nodes.size() >= 3;
     }
 
-    void dept_first_visit(){
+    void dept_first_visit() {
 
         discovery_time = current_time;
         current_time++;
 
-        for(auto& adjacent: adjacent_nodes){
-            if(adjacent.to->discovery_time != -1){
+        for (auto &adjacent: adjacent_nodes) {
+            if (adjacent.to->discovery_time != -1) {
                 continue;
             }
             adjacent.to->dept_first_visit();
@@ -224,61 +216,53 @@ public:
         current_time++;
     }
 
-    void path_to_reach(vector<int>& path, GroupNode* node_to_reach){
+    void propagate_father_intersection(Link new_father_intersection) {
+        father_intersection = new_father_intersection;
 
-        //cout << "Visiting: " << this << endl;
-        //cout << "Target: " << node_to_reach << endl;
-        if(this == node_to_reach){
-            return;
+        if (is_intersection()) {
+            new_father_intersection = Link(this, nullptr, nullptr);
         }
-        int target_dt = node_to_reach->discovery_time;
-        int target_ft = node_to_reach->finish_time;
 
-        Link father = Link(this, nullptr, nullptr);
-
-        for(auto& link: adjacent_nodes){
-
-            int link_dt = link.to->discovery_time;
-            int link_ft = link.to->finish_time;
-
-            // case 1, the node is down a tree branch
-            if(target_dt >= link_dt  && target_ft <= link_ft && link_dt > discovery_time){
-                if(path.back() != link.linking_node_from->value){
-                    path.push_back(link.linking_node_from->value);
-                }
-                path.push_back(link.linking_node_to->value);
-                //cout << "case 1" << endl;
-                link.to->path_to_reach(path, node_to_reach);
-                return;
+        for (auto &adjacent: adjacent_nodes) {
+            // skip the father
+            if (adjacent.to->discovery_time < discovery_time) {
+                continue;
             }
-
-            if(link_dt < father.to->discovery_time){
-                father = link;
+            new_father_intersection.linking_node_from = adjacent.linking_node_to;
+            if (is_intersection()) {
+                new_father_intersection.linking_node_to = adjacent.linking_node_from;
             }
-
+            adjacent.to->propagate_father_intersection(new_father_intersection);
         }
-
-        // case 2, i need to go up the tree
-        //cout << "case 2" << endl;
-        if(path.back() != father.linking_node_from->value){
-            path.push_back(father.linking_node_from->value);
-        }
-        path.push_back(father.linking_node_to->value);
-        father.to->path_to_reach(path, node_to_reach);
     }
 
+    void propagate_distance_from_root(Node *coming_from) {
+        for (auto &adjacent: adjacent_nodes) {
+            if (adjacent.to->distance_from_root != -1) {
+                continue;
+            }
+            int to_add = 1;
+            if (adjacent.linking_node_from != coming_from && coming_from != nullptr) {
+                to_add++;
+            }
+            adjacent.to->distance_from_root = distance_from_root + to_add;
+            adjacent.to->propagate_distance_from_root(adjacent.linking_node_to);
+        }
+    }
 };
 
 class GroupGraph{
 public:
     vector<GroupNode> groups;
-
-    GroupGraph(int n_groups){
+    int root;
+    GroupGraph(int n_groups, int _root = 0){
         groups = vector<GroupNode>();
         groups.reserve(n_groups);
         for(int i=0; i<n_groups; i++){
-            groups.emplace_back(i,n_groups);
+            groups.emplace_back(i);
         }
+        root = _root;
+        groups[root].is_root = true;
     }
 
     void insert_link(Node* from, Node* to){
@@ -290,20 +274,20 @@ public:
 
     void insert_times(){
         current_time = 0;
-        groups[0].dept_first_visit();
+        groups[root].dept_first_visit();
     }
 
-    vector<int> find_path(Node* from, Node* to){
-        vector<int> path = vector<int>();
-        path.push_back(from->value);
-        groups[from->color].path_to_reach(path, &groups[to->color]);
-        if(to->value != path.back()){
-            path.push_back(to->value);
-        }
-        return path;
+
+    void propagate_distance_from_root(){
+        groups[root].distance_from_root = 0;
+        groups[root].propagate_distance_from_root(nullptr);
     }
 
+    void fill_father_intersection(){
+        groups[root].propagate_father_intersection(Link(nullptr, nullptr, nullptr));
+    }
 };
+
 
 int main(){
 
@@ -342,9 +326,12 @@ int main(){
     }
 
     group_graph.insert_times();
+    group_graph.fill_father_intersection();
+    group_graph.propagate_distance_from_root();
 
-    //cout << group_graph.groups << endl;
+    cout << group_graph.groups << endl;
 
+    return 0;
     for(int i=0; i<n_questions; i++){
         int from,to;
         input >> from >> to;
@@ -352,10 +339,6 @@ int main(){
         Node* node_from = &graph.nodes[from];
         Node* node_to = &graph.nodes[to];
 
-        //cout << "From: " << from << " to: " << to << endl;
-        auto path = group_graph.find_path(node_from,node_to);
-        output << path.size()-1 << endl;
-        //cout << path << endl;
     }
 
     output.close();
@@ -397,6 +380,10 @@ ostream & operator<<(ostream & os, GroupNode* node){
     return os << *node;
 }
 ostream & operator<<(ostream & os, GroupNode& node){
-    os << "{color: "<< node.color << " dt: " << node.discovery_time << " ft: " << node.finish_time << "}";
+    int father_intersection = -1;
+    if(node.father_intersection.to != nullptr){
+        father_intersection = node.father_intersection.to->color;
+    }
+    os << "{color: "<< node.color << " dt: " << node.discovery_time << " ft: " << node.finish_time << " father_intersection: " << father_intersection << ", distance: "<< node.distance_from_root <<"}";
     return os;
 }
