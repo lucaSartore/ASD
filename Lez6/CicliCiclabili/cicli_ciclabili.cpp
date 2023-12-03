@@ -249,6 +249,11 @@ public:
             adjacent.to->propagate_distance_from_root(adjacent.linking_node_to);
         }
     }
+
+    // node: a node is ancestor of himself
+    bool is_ancestor_off(GroupNode* tested_child){
+        return discovery_time <= tested_child->discovery_time && finish_time >= tested_child->discovery_time;
+    }
 };
 
 class GroupGraph{
@@ -289,6 +294,96 @@ public:
 };
 
 
+GroupNode* common_parent(GroupNode* n1, GroupNode* n2){
+    GroupNode* parent;
+
+    if(n1->discovery_time < n2->discovery_time){
+        parent = n1;
+    }else{
+        parent = n2;
+    }
+
+    // go up the father until the condition is met
+    while(!(parent->is_ancestor_off(n1) && parent->is_ancestor_off(n2))){
+        parent = parent->father_intersection.to;
+    }
+    return parent;
+}
+
+int extra_steps_linear(GroupGraph& graph, Node* father, Node* child){
+    GroupNode* father_group = &graph.groups[father->color];
+    GroupNode* child_group = &graph.groups[child->color];
+
+    int to_return = 0;
+
+    for(auto& father_group_adjacent: father_group->adjacent_nodes){
+        if(father_group_adjacent.to->is_ancestor_off(father_group)){
+            continue;
+        }
+        if(father_group_adjacent.to->is_ancestor_off(child_group)){
+            if(father != father_group_adjacent.linking_node_from){
+                to_return++;
+            }
+            break;
+        }
+    }
+
+    for(auto& child_group_adjacent: child_group->adjacent_nodes){
+        if(child_group_adjacent.to->is_ancestor_off(child_group)){
+            if(child_group_adjacent.linking_node_from != child){
+                to_return++;
+            }
+        }
+    }
+
+    return to_return;
+}
+
+int extra_steps_tree(GroupGraph& graph, Node* n1, Node* n2, GroupNode* common){
+
+    GroupNode* n1_group = &graph.groups[n1->color];
+    GroupNode* n2_group = &graph.groups[n2->color];
+
+    int to_return = 0;
+
+    for(auto& child_group_n1: n1_group->adjacent_nodes){
+        if(child_group_n1.to->is_ancestor_off(n1_group)){
+            if(child_group_n1.linking_node_from != n1){
+                to_return++;
+            }
+        }
+    }
+
+    for(auto& child_group_n2: n2_group->adjacent_nodes){
+        if(child_group_n2.to->is_ancestor_off(n2_group)){
+            if(child_group_n2.linking_node_from != n2){
+                to_return++;
+            }
+        }
+    }
+
+    Node* n_to_1;
+    Node* n_to_2;
+
+
+    for(auto& common_adjacent: common->adjacent_nodes){
+        if(common_adjacent.to->is_ancestor_off(common)){
+            continue;
+        }
+        if(common_adjacent.to->is_ancestor_off(n1_group)){
+            n_to_1 = common_adjacent.linking_node_from;
+        }
+        if(common_adjacent.to->is_ancestor_off(n2_group)){
+            n_to_2 = common_adjacent.linking_node_from;
+        }
+    }
+
+    if(n_to_2 == n_to_1){
+        to_return++;
+    }
+
+    return to_return;
+}
 int main(){
 
     int n_nodes, n_links, n_questions;
@@ -331,7 +426,6 @@ int main(){
 
     cout << group_graph.groups << endl;
 
-    return 0;
     for(int i=0; i<n_questions; i++){
         int from,to;
         input >> from >> to;
@@ -339,6 +433,40 @@ int main(){
         Node* node_from = &graph.nodes[from];
         Node* node_to = &graph.nodes[to];
 
+        GroupNode* group_from = &group_graph.groups[node_from->color];
+        GroupNode* group_to = &group_graph.groups[node_to->color];
+
+        if(group_from->color == group_to->color){
+            if(node_from == node_to){
+                output << 0;
+            } else{
+                output << 1;
+            }
+            continue;
+        }
+
+        GroupNode* common_father = common_parent(group_from,group_to);
+
+        int approximate_distance = group_from->distance_from_root + group_to->distance_from_root
+                - 2*common_father->distance_from_root;
+        //cout << "n1: " << group_from << endl;
+        //cout << "n2: " << group_to << endl;
+        //cout << "common: " << common_father << endl;
+
+        int difference = 0;
+
+        if(group_from->is_ancestor_off(group_to)){
+            difference = extra_steps_linear(group_graph,node_from,node_to);
+        }else if(group_to->is_ancestor_off(group_from)){
+            difference = extra_steps_linear(group_graph,node_to,node_from);
+        }else{
+            difference = extra_steps_tree(group_graph,node_from,node_to,common_father);
+        }
+        int distance = approximate_distance + difference;
+
+        cout << "From " << from << " To " << to << ": " << distance << " approximate: " << approximate_distance << endl;
+
+        output << distance << endl;
     }
 
     output.close();
