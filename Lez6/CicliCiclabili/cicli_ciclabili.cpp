@@ -29,12 +29,14 @@ public:
     vector<Node*> adjacent_nodes;
     int color;
     Node* has_same_color_of;
+    int distance_from_root;
     Node(int n){
         value = n;
         discovery_time = -1;
         adjacent_nodes = vector<Node*>();
         color = -1;
         has_same_color_of = nullptr;
+        distance_from_root = -1;
     }
 
     void insert_adjacent_node(Node* adjacent){
@@ -99,6 +101,8 @@ public:
         current_color++;
         return color;
     }
+
+
 };
 
 
@@ -144,6 +148,26 @@ public:
         return current_color;
     }
 
+    void propagate_distance_from_root(int root = 0){
+        nodes[root].distance_from_root = 0;
+
+        queue<Node*> to_visit = queue<Node*>();
+        to_visit.push(&nodes[root]);
+
+        while (!to_visit.empty()){
+
+            Node* node = to_visit.front();
+            to_visit.pop();
+            for(auto adjacent: node->adjacent_nodes){
+                if(adjacent->distance_from_root != -1){
+                    continue;
+                }
+                adjacent->distance_from_root = node->distance_from_root + 1;
+                to_visit.push(adjacent);
+            }
+        }
+
+    }
 
 };
 
@@ -198,7 +222,7 @@ public:
 
     // this node is an itersection if it hase more that 3 adjacent nodes
     bool is_intersection() {
-        return adjacent_nodes.size() >= 3;
+        return adjacent_nodes.size() >= 3 || (is_root && adjacent_nodes.size() >= 2);
     }
 
     void dept_first_visit() {
@@ -310,80 +334,55 @@ GroupNode* common_parent(GroupNode* n1, GroupNode* n2){
     return parent;
 }
 
-int extra_steps_linear(GroupGraph& graph, Node* father, Node* child){
-    GroupNode* father_group = &graph.groups[father->color];
-    GroupNode* child_group = &graph.groups[child->color];
 
-    int to_return = 0;
+// return the node inside from that is the link to the group to.
+// from must be an ancestor of from
+Node* get_link_node(GroupNode* from, GroupNode* to){
+    assert(from->distance_from_root < to->distance_from_root);
 
-    for(auto& father_group_adjacent: father_group->adjacent_nodes){
-        if(father_group_adjacent.to->is_ancestor_off(father_group)){
+    for(auto adjacent: from->adjacent_nodes){
+        if(adjacent.to->is_ancestor_off(from)){
             continue;
         }
-        if(father_group_adjacent.to->is_ancestor_off(child_group)){
-            if(father != father_group_adjacent.linking_node_from){
-                to_return++;
-            }
-            break;
+        if(adjacent.to->is_ancestor_off(to)){
+            return adjacent.linking_node_from;
         }
     }
-
-    for(auto& child_group_adjacent: child_group->adjacent_nodes){
-        if(child_group_adjacent.to->is_ancestor_off(child_group)){
-            if(child_group_adjacent.linking_node_from != child){
-                to_return++;
-            }
-        }
-    }
-
-    return to_return;
 }
 
-int extra_steps_tree(GroupGraph& graph, Node* n1, Node* n2, GroupNode* common){
+// calculate the distance between to node, (each one madke part of a different group, where node 2 is an ancestor of node 1
+int distance_linear(GroupNode* group_from, Node* node_from, GroupNode* group_to, Node* node_to){
 
-    GroupNode* n1_group = &graph.groups[n1->color];
-    GroupNode* n2_group = &graph.groups[n2->color];
+    assert(node_from->color == group_from->color);
+    assert(node_to->color == group_to->color);
 
-    int to_return = 0;
+    Node* link_node = get_link_node(group_from,group_to);
 
-    for(auto& child_group_n1: n1_group->adjacent_nodes){
-        if(child_group_n1.to->is_ancestor_off(n1_group)){
-            if(child_group_n1.linking_node_from != n1){
-                to_return++;
-            }
-        }
+    int distance = node_to->distance_from_root - link_node->distance_from_root;
+
+    if(link_node != node_from){
+        distance++;
     }
 
-    for(auto& child_group_n2: n2_group->adjacent_nodes){
-        if(child_group_n2.to->is_ancestor_off(n2_group)){
-            if(child_group_n2.linking_node_from != n2){
-                to_return++;
-            }
-        }
-    }
-
-    Node* n_to_1;
-    Node* n_to_2;
-
-
-    for(auto& common_adjacent: common->adjacent_nodes){
-        if(common_adjacent.to->is_ancestor_off(common)){
-            continue;
-        }
-        if(common_adjacent.to->is_ancestor_off(n1_group)){
-            n_to_1 = common_adjacent.linking_node_from;
-        }
-        if(common_adjacent.to->is_ancestor_off(n2_group)){
-            n_to_2 = common_adjacent.linking_node_from;
-        }
-    }
-
-    if(n_to_2 == n_to_1){
-        to_return++;
-    }
-
-    return to_return;
+    return distance;
 }
+
+// calculate the distance between to nodes, that are not one the ancestor of the other, but have a common ancestor
+int distance_on_tree(GroupNode* g1, Node* n1, GroupNode* g2, Node* n2, GroupNode* common_ancestor){
+
+    Node* link_n1 = get_link_node(common_ancestor,g1);
+    Node* link_n2 = get_link_node(common_ancestor,g2);
+
+    int distance = n1->distance_from_root + n2->distance_from_root - link_n1->distance_from_root - link_n2->distance_from_root;
+
+    if(link_n2 != link_n1){
+        distance++;
+    }
+
+    return distance;
+}
+
+
 int main(){
 
     int n_nodes, n_links, n_questions;
@@ -403,14 +402,11 @@ int main(){
         graph.insert_link(n1,n2);
     }
 
-
     // calculate the color (aka the fully connected part of the graph
     graph.fill_has_same_color_of();
     int n_color = graph.color_graph();
 
     GroupGraph group_graph = GroupGraph(n_color);
-
-    //cout << graph.nodes << endl;
 
     for(auto& node: graph.nodes) {
         for (auto adjacent: node.adjacent_nodes) {
@@ -420,11 +416,13 @@ int main(){
         }
     }
 
+    graph.propagate_distance_from_root();
     group_graph.insert_times();
     group_graph.fill_father_intersection();
     group_graph.propagate_distance_from_root();
 
-    cout << group_graph.groups << endl;
+    //cout << graph.nodes << endl;
+    //cout << group_graph.groups << endl;
 
     for(int i=0; i<n_questions; i++){
         int from,to;
@@ -438,33 +436,26 @@ int main(){
 
         if(group_from->color == group_to->color){
             if(node_from == node_to){
-                output << 0;
+                output << 0 << endl;
             } else{
-                output << 1;
+                output << 1 << endl;
             }
             continue;
         }
 
         GroupNode* common_father = common_parent(group_from,group_to);
 
-        int approximate_distance = group_from->distance_from_root + group_to->distance_from_root
-                - 2*common_father->distance_from_root;
-        //cout << "n1: " << group_from << endl;
-        //cout << "n2: " << group_to << endl;
-        //cout << "common: " << common_father << endl;
-
-        int difference = 0;
+        int distance;
 
         if(group_from->is_ancestor_off(group_to)){
-            difference = extra_steps_linear(group_graph,node_from,node_to);
+            distance = distance_linear(group_from,node_from,group_to,node_to);
         }else if(group_to->is_ancestor_off(group_from)){
-            difference = extra_steps_linear(group_graph,node_to,node_from);
+            distance = distance_linear(group_to,node_to,group_from,node_from);
         }else{
-            difference = extra_steps_tree(group_graph,node_from,node_to,common_father);
+            distance = distance_on_tree(group_from,node_from,group_to,node_to,common_father);
         }
-        int distance = approximate_distance + difference;
 
-        cout << "From " << from << " To " << to << ": " << distance << " approximate: " << approximate_distance << endl;
+        //cout << "From " << from << " To " << to << ": " << distance << endl;
 
         output << distance << endl;
     }
@@ -482,7 +473,7 @@ ostream & operator<<(ostream & os, Node& node){
     }else{
         same_color = node.has_same_color_of->value;
     }
-    os << "{id:  " << node.value <<", color: " << node.color  <<  ", has_same_color_of: " <<  same_color << "}";
+    os << "{id:  " << node.value <<", color: " << node.color  <<  ", has_same_color_of: " <<  same_color << ", distance: " << node.distance_from_root << "}";
     return os;
 }
 
