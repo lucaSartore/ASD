@@ -140,9 +140,7 @@ public:
         current_color = 0;
 
         for(auto &node: nodes){
-            if(node.color == -1){
-                node.get_color();
-            }
+            node.get_color();
         }
 
         return current_color;
