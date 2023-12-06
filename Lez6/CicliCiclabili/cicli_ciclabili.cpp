@@ -69,7 +69,11 @@ public:
             }else if(adjacent_node->discovery_time < discovery_time){
                 // if the node i am looking to has already been discovered, and has also been discovered before me
                 // then i have created a cycle, and he is the original generator
-                new_has_same_color_of = adjacent_node;
+                if(adjacent_node->has_same_color_of == nullptr){
+                    new_has_same_color_of = adjacent_node;
+                }else{
+                    new_has_same_color_of = adjacent_node->has_same_color_of;
+                }
             }
 
             // now keep the same color that has been discovered earlyer
@@ -273,7 +277,7 @@ public:
     }
 
     // node: a node is ancestor of himself
-    bool is_ancestor_off(GroupNode* tested_child){
+    bool is_ancestor_of(GroupNode* tested_child){
         return discovery_time <= tested_child->discovery_time && finish_time >= tested_child->discovery_time;
     }
 };
@@ -326,12 +330,53 @@ GroupNode* common_parent(GroupNode* n1, GroupNode* n2){
     }
 
     // go up the father until the condition is met
-    while(!(parent->is_ancestor_off(n1) && parent->is_ancestor_off(n2))){
+    while(!(parent->is_ancestor_of(n1) && parent->is_ancestor_of(n2))){
         parent = parent->father_intersection.to;
     }
     return parent;
 }
 
+
+int distance_inside_group(Graph& graph, Node* n1, Node* n2){
+    assert(n1->color == n2->color);
+    int color = n1->color;
+
+    queue<int> distances = queue<int>();
+    queue<Node*> to_visit = queue<Node*>();
+
+    vector<bool> is_pushed = vector<bool>();
+    is_pushed.reserve(graph.nodes.size());
+
+    for(int i=0; i<graph.nodes.size(); i++){
+        is_pushed.push_back(false);
+    }
+
+    to_visit.push(n1);
+    distances.push(0);
+    is_pushed[n1->value] = true;
+
+    while (!to_visit.empty()){
+
+        Node* node = to_visit.front();
+        to_visit.pop();
+        int distance = distances.front();
+        distances.pop();
+
+        for(auto adj: node->adjacent_nodes){
+            if(is_pushed[adj->value] || adj->color!=color){
+                continue;
+            }
+            if(adj == n2){
+                return distance+1;
+            }
+            to_visit.push(adj);
+            distances.push(distance+1);
+        }
+
+    }
+    assert(true);
+
+}
 
 // return the node inside from that is the link to the group to.
 // from must be an ancestor of from
@@ -339,34 +384,38 @@ Node* get_link_node(GroupNode* from, GroupNode* to){
     assert(from->distance_from_root < to->distance_from_root);
 
     for(auto adjacent: from->adjacent_nodes){
-        if(adjacent.to->is_ancestor_off(from)){
+        if(adjacent.to->is_ancestor_of(from)){
             continue;
         }
-        if(adjacent.to->is_ancestor_off(to)){
+        if(adjacent.to->is_ancestor_of(to)){
             return adjacent.linking_node_from;
         }
     }
+    // if reach here there is an error.
+    assert(false);
 }
 
 // calculate the distance between to node, (each one madke part of a different group, where node 2 is an ancestor of node 1
-int distance_linear(GroupNode* group_from, Node* node_from, GroupNode* group_to, Node* node_to){
+int distance_linear(Graph& graph, GroupNode* group_from, Node* node_from, GroupNode* group_to, Node* node_to){
 
     assert(node_from->color == group_from->color);
     assert(node_to->color == group_to->color);
 
     Node* link_node = get_link_node(group_from,group_to);
 
+
+
     int distance = node_to->distance_from_root - link_node->distance_from_root;
 
     if(link_node != node_from){
-        distance++;
+        distance+=distance_inside_group(graph,link_node,node_from);
     }
 
     return distance;
 }
 
 // calculate the distance between to nodes, that are not one the ancestor of the other, but have a common ancestor
-int distance_on_tree(GroupNode* g1, Node* n1, GroupNode* g2, Node* n2, GroupNode* common_ancestor){
+int distance_on_tree(Graph& graph, GroupNode* g1, Node* n1, GroupNode* g2, Node* n2, GroupNode* common_ancestor){
 
     Node* link_n1 = get_link_node(common_ancestor,g1);
     Node* link_n2 = get_link_node(common_ancestor,g2);
@@ -374,12 +423,49 @@ int distance_on_tree(GroupNode* g1, Node* n1, GroupNode* g2, Node* n2, GroupNode
     int distance = n1->distance_from_root + n2->distance_from_root - link_n1->distance_from_root - link_n2->distance_from_root;
 
     if(link_n2 != link_n1){
-        distance++;
+        distance+= distance_inside_group(graph,link_n1,link_n2);
     }
 
     return distance;
 }
 
+
+int calculate_distance_2(Graph& graph,Node* n1, Node* n2){
+    queue<int> distances = queue<int>();
+    queue<Node*> to_visit = queue<Node*>();
+
+    vector<bool> is_pushed = vector<bool>();
+    is_pushed.reserve(graph.nodes.size());
+
+    for(int i=0; i<graph.nodes.size(); i++){
+        is_pushed.push_back(false);
+    }
+
+    to_visit.push(n1);
+    distances.push(0);
+    is_pushed[n1->value] = true;
+
+    while (!to_visit.empty()){
+
+        Node* node = to_visit.front();
+        to_visit.pop();
+        int distance = distances.front();
+        distances.pop();
+
+        for(auto adj: node->adjacent_nodes){
+            if(is_pushed[adj->value]){
+                continue;
+            }
+            if(adj == n2){
+                return distance+1;
+            }
+            to_visit.push(adj);
+            distances.push(distance+1);
+        }
+
+    }
+    assert(true);
+}
 
 int main(){
 
@@ -403,6 +489,8 @@ int main(){
     // calculate the color (aka the fully connected part of the graph
     graph.fill_has_same_color_of();
     int n_color = graph.color_graph();
+
+    cout << graph.nodes << endl;
 
     GroupGraph group_graph = GroupGraph(n_color);
 
@@ -433,11 +521,7 @@ int main(){
         GroupNode* group_to = &group_graph.groups[node_to->color];
 
         if(group_from->color == group_to->color){
-            if(node_from == node_to){
-                output << 0 << endl;
-            } else{
-                output << 1 << endl;
-            }
+            output << distance_inside_group(graph,node_from,node_to)<<endl;
             continue;
         }
 
@@ -445,15 +529,18 @@ int main(){
 
         int distance;
 
-        if(group_from->is_ancestor_off(group_to)){
-            distance = distance_linear(group_from,node_from,group_to,node_to);
-        }else if(group_to->is_ancestor_off(group_from)){
-            distance = distance_linear(group_to,node_to,group_from,node_from);
+        if(group_from->is_ancestor_of(group_to)){
+            distance = distance_linear(graph, group_from,node_from,group_to,node_to);
+        }else if(group_to->is_ancestor_of(group_from)){
+            distance = distance_linear(graph, group_to,node_to,group_from,node_from);
         }else{
-            distance = distance_on_tree(group_from,node_from,group_to,node_to,common_father);
+            distance = distance_on_tree(graph, group_from,node_from,group_to,node_to,common_father);
         }
 
-        //cout << "From " << from << " To " << to << ": " << distance << endl;
+
+        //int distance_2 = calculate_distance_2(graph,node_from,node_to);
+        //cout << "From " << from << " To " << to << ": " << distance << "  -  " << distance_2 << endl;
+        //assert(distance == distance_2);
 
         output << distance << endl;
     }
