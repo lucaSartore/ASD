@@ -17,3 +17,5 @@ add_executable(CicliCiclabili2 CicliCiclabili/cicli_ciclabili_2.cpp)
 add_executable(CicliCiclabili3 CicliCiclabili/cicli_ciclabili_3.cpp)
 
 add_executable(DividiEtImpera dividi_et_impera/main.cpp)
+
+add_executable(AmongASD AmongASD/amongasd.cpp)
