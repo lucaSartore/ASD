@@ -8,6 +8,7 @@
 using namespace std;
 
 
+
 class Node;
 class GroupNode;
 
@@ -19,20 +20,16 @@ ostream & operator<<(ostream & os, GroupNode* node);
 ostream & operator<<(ostream & os, GroupNode& node);
 
 
-int current_time;
 class Node{
 public:
     int value;
-    int discovery_time;
-    int finish_time;
     vector<Node*> adjacent_nodes;
     int distance_from_root;
     Node* father_intersection;
+    Node* father;
     bool is_root;
     Node(int n){
         value = n;
-        discovery_time = -1;
-        finish_time = -1;
         adjacent_nodes = vector<Node*>();
         distance_from_root = -1;
         father_intersection = nullptr;
@@ -45,52 +42,25 @@ public:
 
     // this node is an itersection if it hase more that 3 adjacent nodes
     bool is_intersection() {
-        return adjacent_nodes.size() >= 3 || (is_root && adjacent_nodes.size() >= 2);
+        return adjacent_nodes.size() >= 3 || is_root;
     }
 
-    void dept_first_visit() {
-        discovery_time = current_time;
-        current_time++;
-
-        // do the one on the same loop first!
-        for (auto adjacent: adjacent_nodes) {
-            if (adjacent->discovery_time != -1) {
-                continue;
-            }
-            if(adjacent->distance_from_root > distance_from_root){
-                continue;
-            }
-            adjacent->dept_first_visit();
-        }
-
-        for (auto adjacent: adjacent_nodes) {
-            if (adjacent->discovery_time != -1) {
-                continue;
-            }
-            adjacent->dept_first_visit();
-        }
-        finish_time = current_time;
-        current_time++;
-    }
-
-    void propagate_father_intersection(Node* new_father_intersection) {
+    void propagate_father_intersection(Node* new_father_intersection, Node* new_father) {
         father_intersection = new_father_intersection;
+        father = new_father;
 
+        new_father = this;
         if (is_intersection()) {
             new_father_intersection = this;
         }
 
         for (auto adjacent: adjacent_nodes) {
             // skip the father
-            if (adjacent->discovery_time < discovery_time) {
+            if (adjacent->distance_from_root <= distance_from_root) {
                 continue;
             }
-            adjacent->propagate_father_intersection(new_father_intersection);
+            adjacent->propagate_father_intersection(new_father_intersection,new_father);
         }
-    }
-
-    bool is_ancestor_of(Node* const tested_child) const{
-        return discovery_time <= tested_child->discovery_time && finish_time >= tested_child->discovery_time;
     }
 };
 
@@ -107,6 +77,7 @@ public:
         for(int i=0; i<n_nodes; i++){
             nodes.emplace_back(i);
         }
+        nodes[root].is_root = true;
     }
 
     void insert_link(int n1, int n2){
@@ -134,54 +105,15 @@ public:
         }
     }
 
-    void insert_times(){
-        current_time = 0;
-        nodes[root].dept_first_visit();
-    }
 
     void fill_father_intersection(){
-        nodes[root].propagate_father_intersection(nullptr);
+        nodes[root].propagate_father_intersection(nullptr, nullptr);
     }
 
 };
 
 
-
-Node* common_parent(Node* n1, Node* n2){
-    Node* parent;
-
-    if(n1->discovery_time < n2->discovery_time){
-        parent = n1;
-    }else{
-        parent = n2;
-    }
-
-    // go up the father until the condition is met
-    while(!(parent->is_ancestor_of(n1) && parent->is_ancestor_of(n2))){
-        parent = parent->father_intersection;
-    }
-    return parent;
-}
-
-
-Node* next_step(Node* from, Node* to){
-
-    Node* next_step = from;
-
-    for(auto adj: from->adjacent_nodes){
-        if(adj->is_ancestor_of(next_step)){
-            continue;
-        }
-        if(adj->is_ancestor_of(to)){
-            next_step = adj;
-        }
-    }
-
-    return next_step;
-}
-
 bool are_adjacent(Node* n1, Node* n2){
-    assert(n1!=n2);
     for(auto adj: n1->adjacent_nodes){
         if(adj == n2){
             return true;
@@ -190,45 +122,68 @@ bool are_adjacent(Node* n1, Node* n2){
     return false;
 }
 
+int distance_2_nodes(Node* n1, Node* n2){
+    Node* previus_parent_n1 = n1;
+    Node* previus_parent_n2 = n2;
+    Node* parent_n1 = n1;
+    Node* parent_n2 = n2;
+
+    while (parent_n1!=parent_n2){
+        if(parent_n1->distance_from_root > parent_n2->distance_from_root){
+            previus_parent_n1 = parent_n1;
+            parent_n1 = parent_n1->father_intersection;
+        }else{
+            previus_parent_n2 = parent_n2;
+            parent_n2 = parent_n2->father_intersection;
+        }
+    }
+
+
+    bool possible_bad_condition = false;
+    if(previus_parent_n1 == n1 && previus_parent_n2->distance_from_root > n1->distance_from_root){
+        possible_bad_condition = true;
+    }
+    if(previus_parent_n2 == n2 && previus_parent_n1->distance_from_root > n2->distance_from_root){
+        possible_bad_condition = true;
+    }
+    if(possible_bad_condition){
+        parent_n2 = previus_parent_n2;
+        parent_n1 = previus_parent_n1;
+        while (parent_n1!=parent_n2){
+            if(parent_n1->distance_from_root > parent_n2->distance_from_root){
+                previus_parent_n1 = parent_n1;
+                parent_n1 = parent_n1->father;
+            }else{
+                previus_parent_n2 = parent_n2;
+                parent_n2 = parent_n2->father;
+            }
+        }
+    }
+
+    if(parent_n1 == n1){
+        return n2->distance_from_root - n1->distance_from_root;
+    }
+    if(parent_n2 == n2){
+        return n1->distance_from_root - n2->distance_from_root;
+    }
+
+
+    int distance = n1->distance_from_root + n2->distance_from_root - 2*parent_n2->distance_from_root;
+    if(are_adjacent(previus_parent_n1,previus_parent_n2)){
+        distance--;
+    }
+    return distance;
+}
+
+
 // calculate the distance between to node, (each one madke part of a different group, where node 2 is an ancestor of node 1
 int distance_linear(Node* node_from, Node* node_to){
-    if(node_from == node_to){
-        return 0;
-    }
-    if(node_to->distance_from_root == node_from->distance_from_root){
-        return 1;
-    }
-
-    Node* oldest;
-    Node* youngest;
-
-    if(node_from->distance_from_root < node_to->distance_from_root){
-        oldest = node_from;
-        youngest = node_to;
-    }else{
-        oldest = node_to;
-        youngest = node_from;
-    }
-
-    Node* next = next_step(oldest,youngest);
-
-    return 1 + next->distance_from_root - youngest->distance_from_root;
+    return 0;
 }
 
 // calculate the distance between to nodes, that are not one the ancestor of the other, but have a common ancestor
 int distance_on_tree(Node* n1, Node* n2, Node* common_ancestor){
-
-    Node* next_step_to_n1 = next_step(common_ancestor,n1);
-    Node* next_step_to_n2 = next_step(common_ancestor,n2);
-
-    int d = n1->distance_from_root + n2 ->distance_from_root - next_step_to_n2->distance_from_root - next_step_to_n1->distance_from_root;
-
-    if(are_adjacent(next_step_to_n2,next_step_to_n1)){
-        d++;
-    }else{
-        d+=2;
-    }
-    return d;
+    return 0;
 }
 
 
@@ -268,6 +223,7 @@ int calculate_distance_2(Graph& graph,Node* n1, Node* n2){
             }
             to_visit.push(adj);
             distances.push(distance+1);
+            is_pushed[adj->value] = true;
         }
 
     }
@@ -296,7 +252,6 @@ int main(){
 
     // calculate the color (aka the fully connected part of the graph
     graph.propagate_distance_from_root();
-    graph.insert_times();
     graph.fill_father_intersection();
 
     //cout << graph.nodes << endl;
@@ -306,21 +261,25 @@ int main(){
         int from,to;
         input >> from >> to;
 
+        //if(from != 3043 || to != 3143){
+        //      continue;
+        //}
+
         Node* node_from = &graph.nodes[from];
         Node* node_to = &graph.nodes[to];
 
-        Node* parent = common_parent(node_from,node_to);
+        int distance = distance_2_nodes(node_from,node_to);
 
-        int distance;// = node_from->distance_from_root + node_to->distance_from_root - 2 * parent->distance_from_root;
-
+        /*
         if(parent == node_from || parent == node_to){
             distance = distance_linear(node_from,node_to);
         }else{
             distance = distance_on_tree(node_to,node_from,parent);
-        }
+        }*/
 
         //int actual_distance = calculate_distance_2(graph,node_to,node_from);
-        //cout << distance << " " << actual_distance << endl;
+        //cout << "from " << from << " to: " << to << ": " << distance << " " << actual_distance << endl;
+        //assert(distance == actual_distance);
 
         output << distance << endl;
     }
@@ -328,6 +287,7 @@ int main(){
     output.close();
     input.close();
 
+    return 0;
 }
 
 
@@ -336,7 +296,7 @@ ostream & operator<<(ostream & os, Node& node){
     if(node.father_intersection!= nullptr){
         father_intersection = node.father_intersection->value;
     }
-    os << "{id:  " << node.value << ", distance: " << node.distance_from_root << ", father intersection: " << father_intersection << ", dt: " << node.discovery_time << ", ft: " << node.finish_time << "}";
+    os << "{id:  " << node.value << ", distance: " << node.distance_from_root << ", father intersection: " << father_intersection << "}";
     return os;
 }
 

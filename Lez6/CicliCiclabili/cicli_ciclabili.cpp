@@ -337,7 +337,7 @@ GroupNode* common_parent(GroupNode* n1, GroupNode* n2){
 }
 
 
-int distance_inside_group(Graph& graph, Node* n1, Node* n2){
+int         distance_inside_group(Graph& graph, Node* n1, Node* n2){
     assert(n1->color == n2->color);
     int color = n1->color;
 
