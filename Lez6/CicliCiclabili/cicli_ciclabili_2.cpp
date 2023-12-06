@@ -19,6 +19,7 @@ ostream & operator<<(ostream & os, vector<T>& v);
 ostream & operator<<(ostream & os, GroupNode* node);
 ostream & operator<<(ostream & os, GroupNode& node);
 
+int current_time = 0;
 
 class Node{
 public:
@@ -26,14 +27,47 @@ public:
     vector<Node*> adjacent_nodes;
     int distance_from_root;
     Node* father_intersection;
+    Node* pre_fader_intersection;
     Node* father;
     bool is_root;
+    int dt;
+    int ft;
     Node(int n){
         value = n;
         adjacent_nodes = vector<Node*>();
         distance_from_root = -1;
         father_intersection = nullptr;
+        pre_fader_intersection = nullptr;
+        father = nullptr;
         is_root = false;
+        dt = -1;
+        ft = -1;
+    }
+
+    bool is_ancestor_of(const Node* tested_child)const{
+        return dt <= tested_child->dt && ft >= tested_child->ft;
+    }
+
+    void depth_first_visit(){
+        dt = current_time;
+        current_time++;
+        for(auto adj: adjacent_nodes){
+            if(adj->dt != -1){
+                continue;
+            }
+            if(adj->distance_from_root > distance_from_root) {
+                continue;
+            }
+            adj->depth_first_visit();
+        }
+        for(auto adj: adjacent_nodes){
+            if(adj->dt != -1){
+                continue;
+            }
+            adj->depth_first_visit();
+        }
+        ft = current_time;
+        current_time++;
     }
 
     void insert_adjacent_node(Node* adjacent){
@@ -45,12 +79,17 @@ public:
         return adjacent_nodes.size() >= 3 || is_root;
     }
 
-    void propagate_father_intersection(Node* new_father_intersection, Node* new_father) {
+    void propagate_father_intersection(Node* new_father_intersection, Node* new_father, Node* new_pre_fader_intersection) {
         father_intersection = new_father_intersection;
         father = new_father;
+        pre_fader_intersection = new_pre_fader_intersection;
 
         new_father = this;
         if (is_intersection()) {
+            new_father_intersection = this;
+        }
+        if(father == father_intersection){
+            pre_fader_intersection = this;
             new_father_intersection = this;
         }
 
@@ -59,7 +98,7 @@ public:
             if (adjacent->distance_from_root <= distance_from_root) {
                 continue;
             }
-            adjacent->propagate_father_intersection(new_father_intersection,new_father);
+            adjacent->propagate_father_intersection(new_father_intersection,new_father, new_father_intersection);
         }
     }
 };
@@ -85,6 +124,12 @@ public:
         nodes[n2].insert_adjacent_node(&nodes[n1]);
     }
 
+
+    void insert_times(){
+        current_time = 0;
+        nodes[root].depth_first_visit();
+    }
+
     void propagate_distance_from_root(){
         nodes[root].distance_from_root = 0;
 
@@ -107,7 +152,7 @@ public:
 
 
     void fill_father_intersection(){
-        nodes[root].propagate_father_intersection(nullptr, nullptr);
+        nodes[root].propagate_father_intersection(nullptr, nullptr, nullptr);
     }
 
 };
@@ -137,53 +182,22 @@ int distance_2_nodes(Node* n1, Node* n2){
             parent_n2 = parent_n2->father_intersection;
         }
     }
-
-
-    bool possible_bad_condition = false;
-    if(previus_parent_n1 == n1 && previus_parent_n2->distance_from_root > n1->distance_from_root){
-        possible_bad_condition = true;
-    }
-    if(previus_parent_n2 == n2 && previus_parent_n1->distance_from_root > n2->distance_from_root){
-        possible_bad_condition = true;
-    }
-    if(possible_bad_condition){
-        parent_n2 = previus_parent_n2;
-        parent_n1 = previus_parent_n1;
-        while (parent_n1!=parent_n2){
-            if(parent_n1->distance_from_root > parent_n2->distance_from_root){
-                previus_parent_n1 = parent_n1;
-                parent_n1 = parent_n1->father;
-            }else{
-                previus_parent_n2 = parent_n2;
-                parent_n2 = parent_n2->father;
-            }
+    /*
+    if(previus_parent_n1->pre_fader_intersection == previus_parent_n2->pre_fader_intersection || parent_n2 == n1 || parent_n2 == n2){
+        if(n1 == previus_parent_n1){
+            return n2->distance_from_root-n1->distance_from_root;
+        } else if(n2 == previus_parent_n2){
+            return n1->distance_from_root-n2->distance_from_root;
+        }else{
+            assert(false);
         }
     }
-
-    if(parent_n1 == n1){
-        return n2->distance_from_root - n1->distance_from_root;
-    }
-    if(parent_n2 == n2){
-        return n1->distance_from_root - n2->distance_from_root;
-    }
-
-
+    */
     int distance = n1->distance_from_root + n2->distance_from_root - 2*parent_n2->distance_from_root;
     if(are_adjacent(previus_parent_n1,previus_parent_n2)){
         distance--;
     }
     return distance;
-}
-
-
-// calculate the distance between to node, (each one madke part of a different group, where node 2 is an ancestor of node 1
-int distance_linear(Node* node_from, Node* node_to){
-    return 0;
-}
-
-// calculate the distance between to nodes, that are not one the ancestor of the other, but have a common ancestor
-int distance_on_tree(Node* n1, Node* n2, Node* common_ancestor){
-    return 0;
 }
 
 
@@ -252,10 +266,10 @@ int main(){
 
     // calculate the color (aka the fully connected part of the graph
     graph.propagate_distance_from_root();
+    graph.insert_times();
     graph.fill_father_intersection();
 
     //cout << graph.nodes << endl;
-
 
     for(int i=0; i<n_questions; i++){
         int from,to;
