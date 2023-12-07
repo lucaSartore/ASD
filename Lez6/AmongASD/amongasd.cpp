@@ -432,7 +432,6 @@ public:
 };
 
 int main(){
-
     int n_nodes, n_links, n_special_links;
     int pos_impostor, pos_students, pos_fab_lab;
 
@@ -461,7 +460,7 @@ int main(){
     graph.set_max_and_min_distances();
     graph.propagate_reachable_by();
     graph.lock_easy_links();
-    graph.lock_hard_links();
+    //graph.lock_hard_links();
     ResultType result = graph.get_result();
     //cout << graph.nodes << endl;
     //cout << result << endl;
