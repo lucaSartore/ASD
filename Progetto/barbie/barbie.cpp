@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <set>
 #include <unordered_map>
+#include <cassert>
 // Nota: il grafo è connesso
 
 using namespace std;
@@ -44,6 +45,35 @@ public:
 
 };
 
+class CostLine{
+public:
+    int base_cost;
+    int number_of_hops;
+    bool is_occupied;
+
+    CostLine(int _base_cost, int _number_of_hops, bool _is_occupied){
+        base_cost = _base_cost;
+        number_of_hops = _number_of_hops;
+        is_occupied = _is_occupied;
+    }
+
+    // two line can be merged only if they have the same
+    // angular coefficient (in this case number_of_hops)
+    // wen two lines are merged the result is the line
+    // with the lowest q (in this case base_cost)
+    // if the two lines have the same q
+    // the one with the occupied node is chosen
+    void merge_with(const CostLine & other){
+        assert(number_of_hops == other.number_of_hops);
+        if(other.base_cost < base_cost){
+            base_cost = other.base_cost;
+            is_occupied = other.is_occupied;
+        } else if(other.base_cost == base_cost){
+            is_occupied = is_occupied || other.is_occupied;
+        }
+    }
+};
+
 class Graph{
 public:
     vector<Node> nodes;
@@ -71,6 +101,9 @@ int main(){
     ofstream output("output.txt");
 
     input >> n_nodes >> n_edges;
+
+    const int POS_BARBIE = 0;
+    const int POS_ALGORITMIA = n_nodes-1;
 
     Graph graph(n_nodes);
 
