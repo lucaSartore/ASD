@@ -1,7 +1,6 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <execution>
 #include <queue>
 #include <unordered_map>
 #include <set>
@@ -121,6 +120,9 @@ public:
         if(current_cost < cost_min){
             current_cost = cost_min;
         }
+        if(current_cost > cost_max){
+            current_cost = cost_max;
+        }
     }
 
     bool was_settable()const{
@@ -149,6 +151,7 @@ public:
     int min_distance_fab_lab;
     int distance_students_to_here;
     int current_distance_to_fab_lab;
+    int distance_impostor_to_here;
     ReachableByType reachable_by;
     Node(int n){
         value = n;
@@ -158,6 +161,7 @@ public:
         max_distance_fab_lab = -1;
         min_distance_fab_lab = -1;
         distance_students_to_here = -1;
+        distance_impostor_to_here = -1;
         current_distance_to_fab_lab = -1;
         reachable_by = BY_NONE;
     }
@@ -188,27 +192,18 @@ public:
         }
     }
 
-    // the firs time this function is called, must ve called on fab_lab
-    void lock_hard_links(int students_reach_time){
-        for(auto& adj: adjacent_nodes_reversed){
-            if(adj.to->current_distance_to_fab_lab <= current_distance_to_fab_lab){
-                continue;
-            }
-            if(adj.to->reachable_by != BY_BOTH){
-                continue;
-            }
-            int margin = adj.to->distance_students_to_here + adj.to->current_distance_to_fab_lab - students_reach_time;
-            assert(margin >= 0);
-            adj.original_link->reduce_cost(margin);
-            adj.original_link->lock();
-            adj.to->try_reduce_distance_fab_lab(current_distance_to_fab_lab + adj.original_link->current_cost);
-            adj.to->lock_hard_links(students_reach_time);
+    inline void try_reduce_distance_fab_lab(int new_distance){
+        if(new_distance < current_distance_to_fab_lab){
+            current_distance_to_fab_lab = new_distance;
         }
     }
 
-    void try_reduce_distance_fab_lab(int new_distance){
-        if(new_distance < current_distance_to_fab_lab){
-            current_distance_to_fab_lab = new_distance;
+    void update_distance_from_fab_lab(){
+        for(auto adj: adjacent_nodes){
+            if(adj.to->current_distance_to_fab_lab == -1){
+                continue;
+            }
+            try_reduce_distance_fab_lab(adj.to->current_distance_to_fab_lab+adj.current_cost);
         }
     }
 
@@ -262,7 +257,6 @@ public:
         distance_to_consider.insert_new_distance(0);
         distance_to_queue.insert_node(start_node,0);
 
-
         int current_distance = distance_to_consider.next_distance_to_consider();
 
         while(true){
@@ -286,7 +280,6 @@ public:
 
 
             for(auto& adjacent_node: next_node->adjacent_nodes_reversed) {
-
                 auto new_node = adjacent_node.to;
                 auto new_distance = adjacent_node.original_link->current_cost + current_distance;
                 distance_to_consider.insert_new_distance(new_distance);
@@ -351,6 +344,14 @@ public:
         }
     }
 
+    void fill_distance_impostor_to_here(){
+        vector<int> distances_from_students = distance_from_node(impostor->value);
+        for(int i=0; i<nodes.size(); i++){
+            nodes[i].distance_impostor_to_here = distances_from_students[i];
+        }
+    }
+
+
     void set_links_to_max(){
         for(auto link: links){
             link->set_to_max();
@@ -406,9 +407,75 @@ public:
     // by both impostor and students
     void lock_hard_links(){
         set_links_to_max();
-        fill_current_distance_from_fab_lab();
+        fill_distance_impostor_to_here();
         fill_distance_students_to_here();
-        fab_lab->lock_hard_links(students->current_distance_to_fab_lab);
+        fill_current_distance_from_fab_lab();
+
+
+        //cout << this->nodes;
+
+        Node* start_node = fab_lab;
+
+        auto distance_to_consider = DistancesToConsider();
+        auto distance_to_queue = DistanceToQueue();
+
+        distance_to_consider.insert_new_distance(0);
+        distance_to_queue.insert_node(start_node,0);
+
+        int current_distance = distance_to_consider.next_distance_to_consider();
+
+        while(true){
+            if(current_distance == -1){
+                break;
+            }
+
+            Node* next_node = distance_to_queue.get_node(current_distance);
+            if(next_node == nullptr){
+                current_distance = distance_to_consider.next_distance_to_consider();
+                continue;
+            }
+
+            next_node->update_distance_from_fab_lab();
+
+            for(auto& adjacent_node_link: next_node->adjacent_nodes_reversed) {
+                auto adjacent_node = adjacent_node_link.to;
+
+                if(adjacent_node->reachable_by != BY_BOTH){
+                    continue;
+                }
+                if(adjacent_node->current_distance_to_fab_lab < next_node->current_distance_to_fab_lab){
+                    continue;
+                }
+
+                adjacent_node->try_reduce_distance_fab_lab(next_node->current_distance_to_fab_lab + adjacent_node_link.original_link->current_cost);
+
+                // I try to reduce the distance of the fom the fab lab, as long as i don't advantage the students
+                int margin = next_node->current_distance_to_fab_lab + adjacent_node_link.original_link->current_cost
+                        + adjacent_node->distance_students_to_here - students->max_distance_fab_lab;
+
+                if(adjacent_node->distance_students_to_here == -1){
+                    margin = 10000000;
+                }
+                //assert(margin>=0);
+                adjacent_node_link.original_link->reduce_cost(margin);
+                adjacent_node_link.original_link->lock();
+
+                // update the distance... (if the node has already a faster path, id dose not update it
+                adjacent_node->try_reduce_distance_fab_lab(
+                        next_node->current_distance_to_fab_lab +
+                        adjacent_node_link.original_link->current_cost);
+
+                auto new_distance = adjacent_node->current_distance_to_fab_lab;
+
+                if(new_distance <= current_distance){
+                    continue;
+                }
+
+                distance_to_consider.insert_new_distance(new_distance);
+
+                distance_to_queue.insert_node(adjacent_node, new_distance);
+            }
+        }
     }
 
     ResultType get_result(){
@@ -427,6 +494,25 @@ public:
         for(int i=0; i<nodes.size(); i++){
             nodes[i].current_distance_to_fab_lab = distances_from_fab_lab[i];
         }
+    }
+
+    vector<int> best_impostor_path()const{
+        vector<int> to_return = vector<int>();
+        to_return.push_back(impostor->value);
+        Node* current_node = impostor;
+        while (current_node!=fab_lab){
+            for(auto& adj: current_node->adjacent_nodes){
+                if(adj.to->current_distance_to_fab_lab == -1){
+                    continue;
+                }
+                if(adj.to->current_distance_to_fab_lab == current_node->current_distance_to_fab_lab - adj.current_cost){
+                    current_node = adj.to;
+                    break;
+                }
+            }
+            to_return.push_back(current_node->value);
+        }
+        return to_return;
     }
 
 };
@@ -460,10 +546,12 @@ int main(){
     graph.set_max_and_min_distances();
     graph.propagate_reachable_by();
     graph.lock_easy_links();
-    //graph.lock_hard_links();
+    graph.lock_hard_links();
     ResultType result = graph.get_result();
     //cout << graph.nodes << endl;
-    //cout << result << endl;
+    cout << result << endl;
+    cout << "time impostor: " << graph.impostor->current_distance_to_fab_lab << endl;
+    cout << "time students:  " << graph.students->current_distance_to_fab_lab << endl;
 
     output << (int)result << endl;
     output << graph.impostor->current_distance_to_fab_lab << " " << graph.students->current_distance_to_fab_lab << endl;
@@ -474,6 +562,13 @@ int main(){
         }
     }
     output << endl;
+
+    auto best_path = graph.best_impostor_path();
+
+    output << best_path.size() << endl;
+    for(int room: best_path){
+        output << room << " ";
+    }
 
     output.close();
     input.close();
