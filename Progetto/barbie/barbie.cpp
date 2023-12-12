@@ -18,6 +18,7 @@ class Node;
 inline int reach_options_size(Node* node);
 
 const int INF = numeric_limits<int>::max();
+const int IMPOSSIBLE = -1;
 
 template<typename T>
 ostream & operator<<(ostream & os, vector<T>& v);
@@ -388,7 +389,7 @@ vector<Interval> get_intervals(ReachOptions& reach_options){
     // the lowest base-cost to the one with the highest base-cost
     // and to the one with highest number of hops to the one with lowest number of hops
 
-    cout << "options: " << options << endl;
+    //cout << "options: " << options << endl;
 
     for(auto& option: options){
 
@@ -404,11 +405,87 @@ vector<Interval> get_intervals(ReachOptions& reach_options){
     return intervals;
 }
 
-typedef enum KValueKind
+typedef enum KValueKind{AddImpostor,RemoveImpostor,TestableOption};
 
 class KValueToTest{
+    int order_value;
+public:
+    int k_value;
+    KValueKind kind;
 
+    KValueToTest(int _k_value, KValueKind _kind){
+        k_value = _k_value;
+        kind = _kind;
+        if(k_value == INF){
+            order_value = INF;
+        }else{
+            // this make sure that if the time is the same, the impostor is always added
+            // first and removed last
+            order_value = k_value*3;
+            if(kind == RemoveImpostor) {
+                order_value += 2;
+            }else if (kind == TestableOption){
+                order_value += 1;
+            }
+        }
+    }
+
+    bool operator<(const KValueToTest& other) const{
+        return order_value < other.order_value;
+    }
+    bool operator>(const KValueToTest& other) const{
+        return order_value > other.order_value;
+    }
+    bool operator>=(const KValueToTest& other) const{
+        return order_value >= other.order_value;
+    }
+    bool operator<=(const KValueToTest& other) const{
+        return order_value <= other.order_value;
+    }
 };
+
+
+int get_best_k(vector<Interval>& intervals){
+    vector<KValueToTest> k_value_to_test = vector<KValueToTest>();
+
+    for(auto& interval: intervals){
+        if(interval.has_impostor){
+            k_value_to_test.emplace_back(interval.start,AddImpostor);
+            k_value_to_test.emplace_back(interval.end,RemoveImpostor);
+        }else{
+            k_value_to_test.emplace_back(interval.start,TestableOption);
+            if(interval.end == interval.start){
+                continue;
+            }
+            k_value_to_test.emplace_back(interval.end,TestableOption);
+            if(interval.start+1 == interval.end){
+                continue;
+            }
+            k_value_to_test.emplace_back(interval.start+1,TestableOption);
+            if(interval.start+2 == interval.end){
+                continue;
+            }
+            k_value_to_test.emplace_back(interval.end-1,TestableOption);
+        }
+    }
+
+    sort(k_value_to_test.begin(),k_value_to_test.end());
+
+    int n_impostor = 0;
+    int best_k = IMPOSSIBLE;
+
+    for(auto item: k_value_to_test){
+        if(item.kind == AddImpostor){
+            n_impostor++;
+        }else if(item.kind == RemoveImpostor){
+            n_impostor--;
+        }else if(n_impostor == 0){
+            best_k = item.k_value;
+        }
+    }
+
+    return best_k;
+}
 
 int main(){
     int n_nodes;
@@ -445,7 +522,19 @@ int main(){
 
     auto intervals = get_intervals(graph.nodes[POS_ALGORITMIA].reach_options);
 
-    cout << intervals;
+    //cout << intervals;
+
+    int best_k = get_best_k(intervals);
+
+    //cout << "The best K is: " << best_k << endl;
+
+    if(best_k == IMPOSSIBLE){
+        output << -2 << endl;
+    }else if(best_k == INF){
+        output << -1 << endl;
+    }else{
+        output << best_k << endl;
+    }
 
     output.close();
     input.close();
