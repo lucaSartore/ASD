@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <cassert>
 #include <limits>
+#include <cmath>
 using namespace std;
 
 class Node;
@@ -80,6 +81,8 @@ public:
             has_impostors = other->has_impostors;
             return true;
         }
+        assert(false);
+        return false;
     }
 
     int cost_at(int val_k){
@@ -405,7 +408,7 @@ vector<Interval> get_intervals(ReachOptions& reach_options){
     return intervals;
 }
 
-typedef enum KValueKind{AddImpostor,RemoveImpostor,TestableOption};
+typedef enum KValueKind{AddImpostor,RemoveImpostor,TestableOption}KValueKind;
 
 class KValueToTest{
     int order_value;
