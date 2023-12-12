@@ -14,7 +14,9 @@
 
 using namespace std;
 
-// define classes name
+/** 
+ * @brief  define classes name
+**/
 class Link;
 class ReachOption;
 class ReachOptions;
@@ -23,8 +25,9 @@ class NodeRef;
 class Graph;
 class Interval;
 
-// define classes structure
-
+/**
+ * @brief define classes structure
+**/
 class ReachOption{
     public:
 
@@ -106,13 +109,17 @@ class Interval{
     Interval(int _start, int _end, bool _has_impostor);
 };
 
-// redefine operator
+/**
+ * @brief redefine operator
+**/
 ostream & operator<<(ostream & os, ReachOption& reach_option);
 
 
-//define classes mothods
+/**
+ * @briefdefine classes mothods
+**/
 
-// class ReachOption
+/* class ReachOption */
 ReachOption::ReachOption(int _n_hops, int _base_cost, bool _has_impostors){
     n_hops = _n_hops;
     base_cost = _base_cost;
@@ -138,7 +145,7 @@ bool ReachOption::merge(ReachOption* other){
     return false;
 }
 
-// class ReachOptions
+/* class ReachOptions */
 ReachOptions::ReachOptions(){
     options = vector<ReachOption>();
 }
@@ -168,7 +175,7 @@ bool ReachOptions::add_option(ReachOption option){
 }
 
 
-// class Node
+/* class Node */
 Node::Node(int _value){
     value = _value;
     adjacent_nodes = vector<Link>();
@@ -180,13 +187,13 @@ void Node::insert_adjacent_node(Node* node_to_insert, int cost) {
     adjacent_nodes.emplace_back(node_to_insert,cost);
 }
 
-// class Link
+/* class Link */
 Link::Link(Node* _node, int _cost ){
     node = _node;
     cost = _cost;
 }
 
-// class NodeRef
+/* class NodeRef */
 NodeRef::NodeRef(int _priority, Node* _node){
     priority = _priority;
     node = _node;
@@ -209,14 +216,14 @@ bool NodeRef::operator<=(const NodeRef& other) const{
     return priority <= other.priority;
 }
 
-// class Interval
+/* class Interval */
 Interval::Interval(int _start, int _end, bool _has_impostor){
     start = _start;
     end = _end;
     has_impostor = _has_impostor;
 }
 
-// class Graph
+/* class Graph */
 Graph::Graph(int number_of_nodes, int _pos_barbie, int _pos_algoritmia){
     nodes = vector<Node>();
     nodes.reserve(number_of_nodes);
@@ -324,7 +331,9 @@ void Graph::propagate_reach_options(int from_id, int number_of_hops){
 
 }
 
-// implementations operators
+/**
+ * @brief implementations operators
+**/
 ostream & operator<<(ostream & os, ReachOption& reach_option){
     os << "n_hops: " << reach_option.n_hops << " base_cost: " << reach_option.base_cost << " has_impostors: " << reach_option.has_impostors;
     return os;
@@ -343,8 +352,9 @@ ostream & operator<<(ostream & os, vector<T>& v){
 }
 
 
-// functios 
-
+/**
+ * @brief functios 
+**/
 vector<Interval> get_intervals(ReachOptions& reach_options){
     vector<Interval> intervals = vector<Interval>();
 
@@ -355,8 +365,9 @@ vector<Interval> get_intervals(ReachOptions& reach_options){
     return intervals;
 }
 
-// main
-
+/**
+ * @brief main
+**/
 int main(){
     int n_nodes;
     int n_edges;
