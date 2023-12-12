@@ -15,6 +15,8 @@ using namespace std;
 
 class Node;
 
+inline int reach_options_size(Node* node);
+
 const int INF = numeric_limits<int>::max();
 
 template<typename T>
@@ -24,10 +26,12 @@ class NodeRef{
 public:
     int priority;
     Node* node;
+    int index_option_when_created;
 
     NodeRef(int _priority, Node* _node){
         priority = _priority;
         node = _node;
+        index_option_when_created = reach_options_size(node)-1;
     }
 
     bool operator<(const NodeRef& other) const{
@@ -149,6 +153,10 @@ public:
 
 };
 
+inline int reach_options_size(Node* node){
+    return node->reach_options.options.size();
+
+}
 
 class Graph{
 public:
@@ -245,10 +253,13 @@ public:
                 break;
             }
 
-            int this_node_base_cost = node->reach_options.options.back().base_cost;
-
+            ReachOption* option_wen_pushed = &node->reach_options.options[node_ref.index_option_when_created];
+            int this_node_base_cost = option_wen_pushed->base_cost;
+            bool previous_path_has_impostor = option_wen_pushed->has_impostors;
             for(auto& adjacent_node: node->adjacent_nodes){
-                bool has_impostor = adjacent_node.node->is_occupied || node->is_occupied;
+                bool has_impostor = previous_path_has_impostor || adjacent_node.node->is_occupied;
+
+                cout << "From " << node->value << " to " << adjacent_node.node->value << " has impostor: " << has_impostor << endl;
 
                 ReachOption option_for_adj_node = ReachOption(n_hops+1,  this_node_base_cost + adjacent_node.cost, has_impostor);
 
@@ -261,7 +272,27 @@ public:
     }
 };
 
+class Interval{
+public:
+    int start;
+    int end;
+    bool has_impostor;
+    Interval(int _start, int _end, bool _has_impostor){
+        start = _start;
+        end = _end;
+        has_impostor = _has_impostor;
+    }
+};
 
+vector<Interval> get_intervals(ReachOptions& reach_options){
+    vector<Interval> intervals = vector<Interval>();
+
+    vector<ReachOption> options = reach_options.options;
+
+
+
+    return intervals;
+    }
 
 int main(){
     int n_nodes;
