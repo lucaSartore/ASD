@@ -12,6 +12,9 @@
 #include <cassert>
 #include <limits>
 
+// RIMOUVERE PRIMA DELLA CONSEGNA
+#include "plot.h"
+
 using namespace std;
 
 /** 
@@ -353,7 +356,7 @@ ostream & operator<<(ostream & os, vector<T>& v){
 
 
 /**
- * @brief functios 
+ * @brief functions 
 **/
 vector<Interval> get_intervals(ReachOptions& reach_options){
     vector<Interval> intervals = vector<Interval>();
@@ -402,6 +405,21 @@ int main(){
     graph.propagate_reach_options(POS_BARBIE,max_num_hops);
 
     cout << graph.nodes[POS_ALGORITMIA].reach_options.options << endl;
+
+    // RIMUOVERE PRIMA DELLA CONSEGNA
+    vector<vector<pair<int, int>>> points;
+    int i=0;
+    for(const auto& p : graph.nodes[POS_ALGORITMIA].reach_options.options){
+        cout<<"hi"<<endl;
+        points[i][0].first= p.base_cost;
+        points[i][0].second=-10*p.n_hops;
+        points[i][1].first=p.base_cost;
+        points[i][1].second= 10*p.n_hops;
+        i++;
+    }
+    cout<<"hi"<<endl;
+    plot(points);
+    //
 
 
     output.close();
