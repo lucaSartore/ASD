@@ -10,10 +10,15 @@
 #include <set>
 #include <unordered_map>
 #include <cassert>
-
+#include <limits>
 using namespace std;
 
 class Node;
+
+const int INF = numeric_limits<int>::max();
+
+template<typename T>
+ostream & operator<<(ostream & os, vector<T>& v);
 
 class NodeRef{
 public:
@@ -31,13 +36,16 @@ public:
     bool operator>(const NodeRef& other) const{
         return priority > other.priority;
     }
-    bool operator>= (const NodeRef& other) const{
+    bool operator>=(const NodeRef& other) const{
         return priority >= other.priority;
     }
-    bool operator<= (const NodeRef& other) const{
+    bool operator<=(const NodeRef& other) const{
         return priority <= other.priority;
     }
 };
+class ReachOption;
+
+ostream & operator<<(ostream & os, ReachOption& reach_option);
 
 class ReachOption{
 public:
@@ -91,14 +99,20 @@ public:
         }
 
         if(last_option->n_hops == option.n_hops){
-            if(last_option->base_cost < option.base_cost){
-                return false;
-            }
-            if(last_option->base_cost == option.base_cost){
-
-            }
+            last_option->merge(&option);
+            return false;
         }
 
+        // the new option has more hops than the last one
+        // I insert it only if it is better
+        if(last_option->base_cost < option.base_cost){
+            return false;
+        }
+
+        // doto: in the case == i can avoid inseert it if there is no impostor
+
+        options.push_back(option);
+        return true;
     }
 
 
@@ -120,11 +134,13 @@ public:
     int value;
     vector<Link> adjacent_nodes;
     bool is_occupied;
+    ReachOptions reach_options;
 
     Node(int _value){
         value = _value;
         adjacent_nodes = vector<Link>();
         is_occupied = false;
+        reach_options = ReachOptions();
     }
 
     void insert_adjacent_node(Node* node_to_insert, int cost) {
@@ -133,17 +149,6 @@ public:
 
 };
 
-class Distance{
-public:
-    int distance;
-    int n_hops;
-    bool has_impostors;
-    Distance(int _distance, int _n_hops, bool _has_impostors){
-        distance = _distance;
-        n_hops = _n_hops;
-        has_impostors = _has_impostors;
-    }
-};
 
 class Graph{
 public:
@@ -172,7 +177,7 @@ public:
 
     /// cost: o(n+m)
     vector<int> get_min_path(int from, int to){
-        auto queue = priority_queue<NodeRef>();
+        auto queue = priority_queue<NodeRef,vector<NodeRef>,greater<>>();
         vector<int> distances = vector<int>(nodes.size(),-1);
 
         queue.emplace(0,get(from));
@@ -187,10 +192,6 @@ public:
             }
             distances[node->value] = distance;
 
-            if(node->value == to){
-                break;
-            }
-
             for(auto adjacent_node: node->adjacent_nodes){
                 if(distances[adjacent_node.node->value] != -1){
                     continue;
@@ -203,12 +204,11 @@ public:
 
         vector<int> path = vector<int>();
 
-        int current_node = from;
+        int current_node = to;
         path.push_back(current_node);
-        while(current_node!=to){
-
+        while(current_node!=from){
             for(auto adj: get(current_node)->adjacent_nodes){
-                if(distances[adj.node->value] == min_distance-adj.cost){
+                if(min_distance == distances[adj.node->value] + adj.cost){
                     current_node = adj.node->value;
                     path.push_back(current_node);
                     min_distance -= adj.cost;
@@ -217,10 +217,51 @@ public:
             }
 
         }
+        std::reverse(path.begin(), path.end());
 
         return path;
     }
+
+    void propagate_reach_options(int from_id, int number_of_hops){
+
+        Node* from = get(from_id);
+
+        auto queue = priority_queue<NodeRef,vector<NodeRef>,greater<>>();
+
+        from->reach_options.add_option(ReachOption(0,0,false));
+
+        queue.emplace(0,from);
+
+        while(!queue.empty()){
+            NodeRef node_ref = queue.top();
+            queue.pop();
+
+            int n_hops = node_ref.priority;
+            Node* node = node_ref.node;
+
+            //cout << "Node " << node->value << " options: " << node->reach_options.options << endl;
+
+            if(n_hops > number_of_hops){
+                break;
+            }
+
+            int this_node_base_cost = node->reach_options.options.back().base_cost;
+
+            for(auto& adjacent_node: node->adjacent_nodes){
+                bool has_impostor = adjacent_node.node->is_occupied || node->is_occupied;
+
+                ReachOption option_for_adj_node = ReachOption(n_hops+1,  this_node_base_cost + adjacent_node.cost, has_impostor);
+
+                if(adjacent_node.node->reach_options.add_option(option_for_adj_node)){
+                    queue.emplace(n_hops+1,adjacent_node.node);
+                }
+            }
+        }
+
+    }
 };
+
+
 
 int main(){
     int n_nodes;
@@ -237,7 +278,7 @@ int main(){
 
     Graph graph(n_nodes,POS_BARBIE,POS_ALGORITMIA);
 
-    for(int i=0; i<n_nodes; i++){
+    for(int i=0; i<n_edges; i++){
         int n1,n2,cost;
         input >> n1 >> n2 >> cost;
         graph.insert_edge(n1,n2,cost);
@@ -253,6 +294,29 @@ int main(){
 
     int max_num_hops = graph.get_min_path(POS_BARBIE,POS_ALGORITMIA).size()-1;
 
+    graph.propagate_reach_options(POS_BARBIE,max_num_hops);
+
+    cout << graph.nodes[POS_ALGORITMIA].reach_options.options << endl;
+
+
     output.close();
     input.close();
+}
+
+
+ostream & operator<<(ostream & os, ReachOption& reach_option){
+    os << "n_hops: " << reach_option.n_hops << " base_cost: " << reach_option.base_cost << " has_impostors: " << reach_option.has_impostors;
+    return os;
+}
+
+template<typename T>
+ostream & operator<<(ostream & os, vector<T>& v){
+    os << "[" << endl;
+    int c = 0;
+    for(auto node: v){
+        os << "\t" << c <<": " << node << "\n";
+        c++;
+    }
+    os << "]\n";
+    return os;
 }
