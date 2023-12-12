@@ -191,7 +191,7 @@ public:
     // and different number of hops... in theory it should return the one with the greater number of hops
     /// cost: o(n+m)
     vector<int> get_min_path(int from, int to){
-        auto queue = priority_queue<NodeRef,vector<NodeRef>,greater<>>();
+        auto queue = priority_queue<NodeRef,vector<NodeRef>,greater<NodeRef>>();
         vector<int> distances = vector<int>(nodes.size(),-1);
 
         queue.emplace(0,get(from));
@@ -240,7 +240,7 @@ public:
 
         Node* from = get(from_id);
 
-        auto queue = priority_queue<NodeRef,vector<NodeRef>,greater<>>();
+        auto queue = priority_queue<NodeRef,vector<NodeRef>,greater<NodeRef>>();
 
         from->reach_options.add_option(ReachOption(0,0,false));
 
