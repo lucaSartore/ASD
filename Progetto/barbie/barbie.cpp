@@ -26,12 +26,12 @@ class NodeRef{
 public:
     int priority;
     Node* node;
-    int index_option_when_created;
+    int index_reach_options_when_created;
 
     NodeRef(int _priority, Node* _node){
         priority = _priority;
         node = _node;
-        index_option_when_created = reach_options_size(node)-1;
+        index_reach_options_when_created = reach_options_size(node) - 1;
     }
 
     bool operator<(const NodeRef& other) const{
@@ -155,7 +155,6 @@ public:
 
 inline int reach_options_size(Node* node){
     return node->reach_options.options.size();
-
 }
 
 class Graph{
@@ -253,7 +252,7 @@ public:
                 break;
             }
 
-            ReachOption* option_wen_pushed = &node->reach_options.options[node_ref.index_option_when_created];
+            ReachOption* option_wen_pushed = &node->reach_options.options[node_ref.index_reach_options_when_created];
             int this_node_base_cost = option_wen_pushed->base_cost;
             bool previous_path_has_impostor = option_wen_pushed->has_impostors;
             for(auto& adjacent_node: node->adjacent_nodes){
@@ -289,10 +288,29 @@ vector<Interval> get_intervals(ReachOptions& reach_options){
 
     vector<ReachOption> options = reach_options.options;
 
+    reverse(options.begin(),options.end());
+
+    // now the options are in order from the one with
+    // the lowest cost to the one with the highest cost
+    // and to the one with highest number of hops to the one with lowest number of hops
+
+
 
 
     return intervals;
-    }
+}
+
+// return the K for witch option start to have a lower or equal, cost than the previous option
+int low_bound(ReachOption* option, ReachOption* previous_option){
+    assert(option->n_hops < previous_option->n_hops);
+    assert(option->base_cost >= previous_option->base_cost);
+}
+
+// return the K for witch option stop having a lower or equal, cost than the next option
+int high_bound(ReachOption* option, ReachOption* next_option){
+    assert(option->n_hops > next_option->n_hops);
+    assert(option->base_cost <= next_option->base_cost);
+}
 
 int main(){
     int n_nodes;
