@@ -546,8 +546,11 @@ int main(){
     graph.set_max_and_min_distances();
     graph.propagate_reachable_by();
     graph.lock_easy_links();
-    graph.lock_hard_links();
     ResultType result = graph.get_result();
+    if(result != IMPOSTOR_WIN){
+        graph.lock_hard_links();
+    }
+    result = graph.get_result();
     //cout << graph.nodes << endl;
     cout << result << endl;
     cout << "time impostor: " << graph.impostor->current_distance_to_fab_lab << endl;
