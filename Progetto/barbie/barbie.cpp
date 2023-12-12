@@ -496,7 +496,6 @@ int main(){
     int n_occupied_nodes;
 
     ifstream input("input.txt");
-    ofstream output("output.txt");
 
     input >> n_nodes >> n_edges;
 
@@ -531,15 +530,18 @@ int main(){
 
     //cout << "The best K is: " << best_k << endl;
 
-    if(best_k == IMPOSSIBLE){
-        output << -2 << endl;
-    }else if(best_k == INF){
-        output << -1 << endl;
-    }else{
-        output << best_k << endl;
-    }
 
+    ofstream output("output.txt");
+    if(best_k == IMPOSSIBLE){
+        output << -2;// << endl;
+    }else if(best_k == INF){
+        output << -1;// << endl;
+    }else{
+        assert(best_k >= 0);
+        output << best_k;// << endl;
+    }
     output.close();
+
     input.close();
 }
 
