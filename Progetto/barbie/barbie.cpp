@@ -259,7 +259,7 @@ public:
             //cout << "Node " << node->value << " options: " << node->reach_options.options << endl;
 
             if(n_hops > number_of_hops){
-                break;
+                //break;
             }
 
             ReachOption* option_wen_pushed = &node->reach_options.options[node_ref.index_reach_options_when_created];
@@ -532,6 +532,9 @@ int main(){
     int max_num_hops = graph.get_min_path(POS_BARBIE,POS_ALGORITMIA).size()-1;
 
     graph.propagate_reach_options(POS_BARBIE,max_num_hops);
+
+    //cout << "options: " << graph.nodes[POS_ALGORITMIA].reach_options.options << endl;
+
 
     auto intervals = get_intervals(graph.nodes[POS_ALGORITMIA].reach_options);
 
