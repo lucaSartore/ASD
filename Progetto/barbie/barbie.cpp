@@ -80,6 +80,10 @@ public:
             return true;
         }
     }
+
+    int cost_at(int val_k){
+        return n_hops*val_k + base_cost;
+    }
 };
 
 class ReachOptions{
@@ -182,6 +186,8 @@ public:
         return &nodes[value];
     }
 
+    // this function may couse problem if there are two paths with minimum ocst
+    // and different number of hops... in theory it should return the one with the greater number of hops
     /// cost: o(n+m)
     vector<int> get_min_path(int from, int to){
         auto queue = priority_queue<NodeRef,vector<NodeRef>,greater<>>();
@@ -257,8 +263,7 @@ public:
             bool previous_path_has_impostor = option_wen_pushed->has_impostors;
             for(auto& adjacent_node: node->adjacent_nodes){
                 bool has_impostor = previous_path_has_impostor || adjacent_node.node->is_occupied;
-
-                cout << "From " << node->value << " to " << adjacent_node.node->value << " has impostor: " << has_impostor << endl;
+                //cout << "From " << node->value << " to " << adjacent_node.node->value << " has impostor: " << has_impostor << endl;
 
                 ReachOption option_for_adj_node = ReachOption(n_hops+1,  this_node_base_cost + adjacent_node.cost, has_impostor);
 
@@ -270,6 +275,8 @@ public:
 
     }
 };
+
+
 
 class Interval{
 public:
@@ -283,6 +290,93 @@ public:
     }
 };
 
+
+ostream & operator<< (ostream& os, Interval& interval);
+
+// point of intersection of two lines
+float intersection_point(ReachOption* line_1, ReachOption* line_2){
+    int m1 = line_1->n_hops;
+    int q1 = line_1->base_cost;
+    int m2 = line_2->n_hops;
+    int q2 = line_2->base_cost;
+
+    float numerator = (float)(q2-q1);
+    float denominator = (float)(m1-m2);
+
+    return numerator/denominator;
+}
+
+// return the K for witch option start to have a lower or equal, cost than the previous option
+int low_bound(ReachOption* option, ReachOption* previous_option){
+    if(previous_option == nullptr){
+        return 0;
+    }
+
+    assert(option->n_hops < previous_option->n_hops);
+    assert(option->base_cost >= previous_option->base_cost);
+
+    float x = intersection_point(option,previous_option);
+
+    int x_int = floor(x);
+
+    return x_int;
+}
+
+// return the K for witch option stop having a lower or equal, cost than the next option
+int high_bound(ReachOption* option, ReachOption* next_option){
+    if(next_option == nullptr){
+        return INF;
+    }
+
+    assert(option->n_hops > next_option->n_hops);
+    assert(option->base_cost <= next_option->base_cost);
+
+    float x = intersection_point(option,next_option);
+
+    int x_int = ceil(x);
+
+    // condition for lack of precision floating point division
+    if(option->cost_at(x_int) == next_option->cost_at(x_int)){
+        return x_int;
+    }
+    if(option->cost_at(x_int+1) == next_option->cost_at(x_int+1)){
+        return x_int+1;
+    }
+    if(option->cost_at(x_int-1) == next_option->cost_at(x_int-1)){
+        return x_int-1;
+    }
+
+    return x_int;
+}
+
+ReachOption* next_option(vector<ReachOption>& options, ReachOption* value){
+    ReachOption* last = &options.back();
+    int original_hops = value->n_hops;
+    while (true){
+        if(value == last){
+            return nullptr;
+        }
+        value++;
+        if(value->n_hops != original_hops) {
+            return value;
+        }
+    }
+}
+
+ReachOption* prev_option(vector<ReachOption>& options, ReachOption* value){
+    ReachOption* first = &options.front();
+    int original_hops = value->n_hops;
+    while (true){
+        if(value == first){
+            return nullptr;
+        }
+        value--;
+        if(value->n_hops != original_hops) {
+            return value;
+        }
+    }
+}
+
 vector<Interval> get_intervals(ReachOptions& reach_options){
     vector<Interval> intervals = vector<Interval>();
 
@@ -291,26 +385,30 @@ vector<Interval> get_intervals(ReachOptions& reach_options){
     reverse(options.begin(),options.end());
 
     // now the options are in order from the one with
-    // the lowest cost to the one with the highest cost
+    // the lowest base-cost to the one with the highest base-cost
     // and to the one with highest number of hops to the one with lowest number of hops
 
+    cout << "options: " << options << endl;
 
+    for(auto& option: options){
 
+        ReachOption* next_option_ptr = next_option(options,&option);
+        ReachOption* prev_option_ptr = prev_option(options,&option);
+
+        int start_interval = low_bound(&option,prev_option_ptr);
+        int end_interval = high_bound(&option,next_option_ptr);
+
+        intervals.emplace_back(start_interval,end_interval,option.has_impostors);
+    }
 
     return intervals;
 }
 
-// return the K for witch option start to have a lower or equal, cost than the previous option
-int low_bound(ReachOption* option, ReachOption* previous_option){
-    assert(option->n_hops < previous_option->n_hops);
-    assert(option->base_cost >= previous_option->base_cost);
-}
+typedef enum KValueKind
 
-// return the K for witch option stop having a lower or equal, cost than the next option
-int high_bound(ReachOption* option, ReachOption* next_option){
-    assert(option->n_hops > next_option->n_hops);
-    assert(option->base_cost <= next_option->base_cost);
-}
+class KValueToTest{
+
+};
 
 int main(){
     int n_nodes;
@@ -345,8 +443,9 @@ int main(){
 
     graph.propagate_reach_options(POS_BARBIE,max_num_hops);
 
-    cout << graph.nodes[POS_ALGORITMIA].reach_options.options << endl;
+    auto intervals = get_intervals(graph.nodes[POS_ALGORITMIA].reach_options);
 
+    cout << intervals;
 
     output.close();
     input.close();
@@ -367,5 +466,19 @@ ostream & operator<<(ostream & os, vector<T>& v){
         c++;
     }
     os << "]\n";
+    return os;
+}
+
+
+
+ostream & operator<< (ostream& os, Interval& interval){
+
+    os << "[" << interval.start << ", ";
+    if(interval.end == INF){
+        os << "+inf";
+    }else{
+        os << interval.end;
+    }
+    os << "] has impostor: " << interval.has_impostor;
     return os;
 }
