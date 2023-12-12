@@ -46,7 +46,7 @@ void plot(const std::vector<std::vector<std::pair<int, int>>>& dataPoints) {
         for (const auto& line : dataPoints) {
             sf::VertexArray array(sf::LinesStrip);
             for (const auto& point : line) {
-                array.append(sf::Vertex(sf::Vector2f(static_cast<float>(point.first), static_cast<float>(point.second)), getRandomColor()));
+                array.append(sf::Vertex(sf::Vector2f(static_cast<float>(point.first), static_cast<float>(point.second)), sf::Color::Red));
             }
             window.draw(array);
         }

@@ -408,16 +408,18 @@ int main(){
 
     // RIMUOVERE PRIMA DELLA CONSEGNA
     vector<vector<pair<int, int>>> points;
-    int i=0;
     for(const auto& p : graph.nodes[POS_ALGORITMIA].reach_options.options){
-        cout<<"hi"<<endl;
-        points[i][0].first= p.base_cost;
-        points[i][0].second=-10*p.n_hops;
-        points[i][1].first=p.base_cost;
-        points[i][1].second= 10*p.n_hops;
-        i++;
+        pair<int, int> uno;
+        pair<int, int> due;
+        uno.first= 0;
+        uno.second=600-(p.base_cost+(0*p.n_hops));
+        due.first= 600;
+        due.second= 600-(p.base_cost+(600*p.n_hops));
+        vector<pair<int, int>> v;
+        v.push_back(uno);
+        v.push_back(due);
+        points.push_back(v);
     }
-    cout<<"hi"<<endl;
     plot(points);
     //
 
