@@ -321,7 +321,18 @@ int low_bound(ReachOption* option, ReachOption* previous_option){
 
     float x = intersection_point(option,previous_option);
 
-    int x_int = floor(x);
+    int x_int = ceil(x);
+
+    // condition for lack of precision floating point division
+    if(option->cost_at(x_int) == previous_option->cost_at(x_int)){
+        return x_int;
+    }
+    if(option->cost_at(x_int+1) == previous_option->cost_at(x_int+1)){
+        return x_int+1;
+    }
+    if(option->cost_at(x_int-1) == previous_option->cost_at(x_int-1)){
+        return x_int-1;
+    }
 
     return x_int;
 }
@@ -337,7 +348,7 @@ int high_bound(ReachOption* option, ReachOption* next_option){
 
     float x = intersection_point(option,next_option);
 
-    int x_int = ceil(x);
+    int x_int = floor(x);
 
     // condition for lack of precision floating point division
     if(option->cost_at(x_int) == next_option->cost_at(x_int)){
