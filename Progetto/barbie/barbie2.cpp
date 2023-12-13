@@ -681,14 +681,21 @@ int main(){
 
     ofstream output("output.txt");
     if(best_k == IMPOSSIBLE){
-        output << -2;// << endl;
+        output << -2 << endl;
     }else if(best_k == INF){
-        output << -1;// << endl;
+        output << -1 << endl;
     }else{
         assert(best_k >= 0);
-        output << best_k;// << endl;
+        output << best_k << endl;
     }
-    output.close();
+
+    auto path_k_zero = graph.get_min_path(POS_BARBIE,POS_ALGORITMIA);
+
+
+    output << path_k_zero.size() << endl;
+    for(int i:path_k_zero){
+        output << i << " ";
+    }
 
     input.close();
 }
