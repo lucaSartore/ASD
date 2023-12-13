@@ -27,7 +27,7 @@ const int IMPOSSIBLE = -1;
  */
 typedef enum KValueKind{AddImpostor,RemoveImpostor,TestableOption}KValueKind;
 
-/** 
+/**
  * @brief  define classes name
 **/
 class Link;
@@ -43,7 +43,7 @@ class KValueToTest;
  * @brief define classes structure
 **/
 class ReachOption{
-    public:
+public:
 
     int n_hops;
     int base_cost;
@@ -51,11 +51,11 @@ class ReachOption{
 
     ReachOption(int _n_hops, int _base_cost, bool _has_impostors);
     bool merge(ReachOption* other);
-    int cost_at(int val_k);
+    long long int cost_at(long long int val_k);
 };
 
 class ReachOptions{
-    public:
+public:
 
     vector<ReachOption> options;
 
@@ -64,7 +64,7 @@ class ReachOptions{
 };
 
 class Node{
-    public:
+public:
 
     int value;
     vector<Link> adjacent_nodes;
@@ -72,12 +72,12 @@ class Node{
     ReachOptions reach_options;
 
     Node(int _value);
-    void insert_adjacent_node(Node* node_to_insert, int cost); 
+    void insert_adjacent_node(Node* node_to_insert, int cost);
 
 };
 
 class Link{
-    public:
+public:
 
     int cost;
     Node* node;
@@ -86,22 +86,22 @@ class Link{
 };
 
 class NodeRef{
-    public:
-    
+public:
+
     int priority;
     Node* node;
     int index_option_when_created;
 
     NodeRef(int _priority, Node* _node);
-    bool operator<(const NodeRef& other) const; 
+    bool operator<(const NodeRef& other) const;
     bool operator>(const NodeRef& other) const;
     bool operator>=(const NodeRef& other) const;
-    bool operator<=(const NodeRef& other) const; 
+    bool operator<=(const NodeRef& other) const;
 };
 
 class Graph{
-    public:
-    
+public:
+
     vector<Node> nodes;
     int POS_BARBIE;
     int POS_ALGORITMIA;
@@ -115,7 +115,7 @@ class Graph{
 };
 
 class Interval{
-    public:
+public:
 
     int start;
     int end;
@@ -126,9 +126,9 @@ class Interval{
 
 class KValueToTest{
     int order_value;
-    
-    public:
-    
+
+public:
+
     int k_value;
     KValueKind kind;
 
@@ -153,8 +153,8 @@ ostream & operator<< (ostream& os, Interval& interval);
  */
 
 float intersection_point(ReachOption* line_1, ReachOption* line_2);
-int low_bound(ReachOption* option, ReachOption* previous_option);
-int high_bound(ReachOption* option, ReachOption* next_option);
+long long int  low_bound(ReachOption* option, ReachOption* previous_option);
+long long int  high_bound(ReachOption* option, ReachOption* next_option);
 ReachOption* next_option(vector<ReachOption>& options, ReachOption* value);
 ReachOption* prev_option(vector<ReachOption>& options, ReachOption* value);
 vector<Interval> get_intervals(ReachOptions& reach_options);
@@ -190,7 +190,7 @@ bool ReachOption::merge(ReachOption* other){
     return false;
 }
 
-int ReachOption::cost_at(int val_k){
+long long int ReachOption::cost_at(long long int val_k){
     return n_hops*val_k + base_cost;
 }
 
@@ -217,8 +217,8 @@ bool ReachOptions::add_option(ReachOption option){
     // I insert it only if it is better
     if(last_option->base_cost < option.base_cost){
         return false;
-    }       
-     // doto: in the case == i can avoid inseert it if there is no impostor
+    }
+    // doto: in the case == i can avoid inseert it if there is no impostor
     options.push_back(option);
     return true;
 }
@@ -256,7 +256,7 @@ bool NodeRef::operator<(const NodeRef& other) const{
 bool NodeRef::operator>(const NodeRef& other) const{
     return priority > other.priority;
 }
-    
+
 bool NodeRef::operator>=(const NodeRef& other) const{
     return priority >= other.priority;
 }
@@ -444,7 +444,7 @@ ostream & operator<< (ostream& os, Interval& interval){
 }
 
 /**
- * @brief functions 
+ * @brief functions
 **/
 // point of intersection of two lines
 float intersection_point(ReachOption* line_1, ReachOption* line_2){
@@ -460,7 +460,7 @@ float intersection_point(ReachOption* line_1, ReachOption* line_2){
 }
 
 // return the K for witch option start to have a lower or equal, cost than the previous option
-int low_bound(ReachOption* option, ReachOption* previous_option){
+long long int low_bound(ReachOption* option, ReachOption* previous_option){
     if(previous_option == nullptr){
         return 0;
     }
@@ -470,7 +470,7 @@ int low_bound(ReachOption* option, ReachOption* previous_option){
 
     float x = intersection_point(option,previous_option);
 
-    int x_int = ceil(x);
+    long long int x_int = ceil(x);
 
     // condition for lack of precision floating point division
     if(option->cost_at(x_int) == previous_option->cost_at(x_int)){
@@ -487,7 +487,7 @@ int low_bound(ReachOption* option, ReachOption* previous_option){
 }
 
 // return the K for witch option stop having a lower or equal, cost than the next option
-int high_bound(ReachOption* option, ReachOption* next_option){
+long long int high_bound(ReachOption* option, ReachOption* next_option){
     if(next_option == nullptr){
         return INF;
     }
@@ -497,7 +497,7 @@ int high_bound(ReachOption* option, ReachOption* next_option){
 
     float x = intersection_point(option,next_option);
 
-    int x_int = floor(x);
+    long long int x_int = floor(x);
 
     // condition for lack of precision floating point division
     if(option->cost_at(x_int) == next_option->cost_at(x_int)){
@@ -552,17 +552,39 @@ vector<Interval> get_intervals(ReachOptions& reach_options){
     // the lowest base-cost to the one with the highest base-cost
     // and to the one with highest number of hops to the one with lowest number of hops
 
-    //cout << "options: " << options << endl;
+    //cout << "INTERVAL-Options: " << options << endl;
 
-    for(auto& option: options){
+    int start = 0;
+    int end = INF;
 
-        ReachOption* next_option_ptr = next_option(options,&option);
-        ReachOption* prev_option_ptr = prev_option(options,&option);
+    int current_next_option_index = -1;
+    int current_option_index = 0;
 
-        int start_interval = low_bound(&option,prev_option_ptr);
-        int end_interval = high_bound(&option,next_option_ptr);
+    while(true){
 
-        intervals.emplace_back(start_interval,end_interval,option.has_impostors);
+        ReachOption* current_option = &options[current_option_index];
+
+        for(int i= current_option_index + 1; i < options.size(); i++){
+            int new_end = high_bound(current_option, &options[i]);
+            if(new_end < start){
+                continue;
+            }
+            if(new_end < end){
+                end = new_end;
+                current_next_option_index = i;
+            }
+        }
+
+        intervals.emplace_back(start,end,current_option->has_impostors);
+
+        if(current_next_option_index == -1){
+            break;
+        }
+
+        start = low_bound(&options[current_next_option_index],&options[current_option_index]);
+        end = INF;
+        current_option_index = current_next_option_index;
+        current_next_option_index = -1;
     }
 
     return intervals;
@@ -647,7 +669,6 @@ int main(){
     graph.propagate_reach_options(POS_BARBIE,max_num_hops);
 
     //cout << "options: " << graph.nodes[POS_ALGORITMIA].reach_options.options << endl;
-
 
     auto intervals = get_intervals(graph.nodes[POS_ALGORITMIA].reach_options);
 

@@ -533,16 +533,16 @@ int main(){
 
     graph.propagate_reach_options(POS_BARBIE,max_num_hops);
 
-    //cout << "options: " << graph.nodes[POS_ALGORITMIA].reach_options.options << endl;
+    cout << "options: " << graph.nodes[POS_ALGORITMIA].reach_options.options << endl;
 
 
     auto intervals = get_intervals(graph.nodes[POS_ALGORITMIA].reach_options);
 
-    //cout << intervals;
+    cout << intervals;
 
     int best_k = get_best_k(intervals);
 
-    //cout << "The best K is: " << best_k << endl;
+    cout << "The best K is: " << best_k << endl;
 
 
     ofstream output("output.txt");
