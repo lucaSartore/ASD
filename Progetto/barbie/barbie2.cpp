@@ -11,11 +11,21 @@
 #include <unordered_map>
 #include <cassert>
 #include <limits>
-
-// RIMOUVERE PRIMA DELLA CONSEGNA
-#include "plot.h"
+#include <cmath>
 
 using namespace std;
+
+/**
+ * @brief global constant
+ */
+
+const int INF = numeric_limits<int>::max();
+const int IMPOSSIBLE = -1;
+
+/**
+ * @brief enum definition
+ */
+typedef enum KValueKind{AddImpostor,RemoveImpostor,TestableOption}KValueKind;
 
 /** 
  * @brief  define classes name
@@ -27,6 +37,7 @@ class Node;
 class NodeRef;
 class Graph;
 class Interval;
+class KValueToTest;
 
 /**
  * @brief define classes structure
@@ -40,6 +51,7 @@ class ReachOption{
 
     ReachOption(int _n_hops, int _base_cost, bool _has_impostors);
     bool merge(ReachOption* other);
+    int cost_at(int val_k);
 };
 
 class ReachOptions{
@@ -112,14 +124,44 @@ class Interval{
     Interval(int _start, int _end, bool _has_impostor);
 };
 
+class KValueToTest{
+    int order_value;
+    
+    public:
+    
+    int k_value;
+    KValueKind kind;
+
+    KValueToTest(int _k_value, KValueKind _kind);
+    bool operator<(const KValueToTest& other) const;
+    bool operator>(const KValueToTest& other) const;
+    bool operator>=(const KValueToTest& other) const;
+    bool operator<=(const KValueToTest& other) const;
+};
+
+
 /**
  * @brief redefine operator
 **/
 ostream & operator<<(ostream & os, ReachOption& reach_option);
-
+template<typename T>
+ostream & operator<<(ostream & os, vector<T>& v);
+ostream & operator<< (ostream& os, Interval& interval);
 
 /**
- * @briefdefine classes mothods
+ * @brief define function
+ */
+
+float intersection_point(ReachOption* line_1, ReachOption* line_2);
+int low_bound(ReachOption* option, ReachOption* previous_option);
+int high_bound(ReachOption* option, ReachOption* next_option);
+ReachOption* next_option(vector<ReachOption>& options, ReachOption* value);
+ReachOption* prev_option(vector<ReachOption>& options, ReachOption* value);
+vector<Interval> get_intervals(ReachOptions& reach_options);
+int get_best_k(vector<Interval>& intervals);
+
+/**
+ * @brief define classes mothods
 **/
 
 /* class ReachOption */
@@ -146,6 +188,10 @@ bool ReachOption::merge(ReachOption* other){
     }
     assert(true);
     return false;
+}
+
+int ReachOption::cost_at(int val_k){
+    return n_hops*val_k + base_cost;
 }
 
 /* class ReachOptions */
@@ -322,7 +368,7 @@ void Graph::propagate_reach_options(int from_id, int number_of_hops){
         for(auto& adjacent_node: node->adjacent_nodes){
             bool has_impostor = previous_path_has_impostor || adjacent_node.node->is_occupied;
 
-            cout << "From " << node->value << " to " << adjacent_node.node->value << " has impostor: " << has_impostor << endl;
+            //cout << "From " << node->value << " to " << adjacent_node.node->value << " has impostor: " << has_impostor << endl;
 
             ReachOption option_for_adj_node = ReachOption(n_hops+1,  this_node_base_cost + adjacent_node.cost, has_impostor);
 
@@ -332,6 +378,37 @@ void Graph::propagate_reach_options(int from_id, int number_of_hops){
         }
     }
 
+}
+
+/* class KValueToTest*/
+KValueToTest::KValueToTest(int _k_value, KValueKind _kind){
+    k_value = _k_value;
+    kind = _kind;
+    if(k_value == INF){
+        order_value = INF;
+    }else{
+        // this make sure that if the time is the same, the impostor is always added
+        // first and removed last
+        order_value = k_value*3;
+        if(kind == RemoveImpostor) {
+            order_value += 2;
+        }else if (kind == TestableOption){
+            order_value += 1;
+        }
+    }
+}
+
+bool KValueToTest::operator<(const KValueToTest& other) const{
+    return order_value < other.order_value;
+}
+bool KValueToTest::operator>(const KValueToTest& other) const{
+    return order_value > other.order_value;
+}
+bool KValueToTest::operator>=(const KValueToTest& other) const{
+    return order_value >= other.order_value;
+}
+bool KValueToTest::operator<=(const KValueToTest& other) const{
+    return order_value <= other.order_value;
 }
 
 /**
@@ -354,18 +431,184 @@ ostream & operator<<(ostream & os, vector<T>& v){
     return os;
 }
 
+ostream & operator<< (ostream& os, Interval& interval){
+
+    os << "[" << interval.start << ", ";
+    if(interval.end == INF){
+        os << "+inf";
+    }else{
+        os << interval.end;
+    }
+    os << "] has impostor: " << interval.has_impostor;
+    return os;
+}
 
 /**
  * @brief functions 
 **/
+// point of intersection of two lines
+float intersection_point(ReachOption* line_1, ReachOption* line_2){
+    int m1 = line_1->n_hops;
+    int q1 = line_1->base_cost;
+    int m2 = line_2->n_hops;
+    int q2 = line_2->base_cost;
+
+    float numerator = (float)(q2-q1);
+    float denominator = (float)(m1-m2);
+
+    return numerator/denominator;
+}
+
+// return the K for witch option start to have a lower or equal, cost than the previous option
+int low_bound(ReachOption* option, ReachOption* previous_option){
+    if(previous_option == nullptr){
+        return 0;
+    }
+
+    assert(option->n_hops < previous_option->n_hops);
+    assert(option->base_cost >= previous_option->base_cost);
+
+    float x = intersection_point(option,previous_option);
+
+    int x_int = ceil(x);
+
+    // condition for lack of precision floating point division
+    if(option->cost_at(x_int) == previous_option->cost_at(x_int)){
+        return x_int;
+    }
+    if(option->cost_at(x_int+1) == previous_option->cost_at(x_int+1)){
+        return x_int+1;
+    }
+    if(option->cost_at(x_int-1) == previous_option->cost_at(x_int-1)){
+        return x_int-1;
+    }
+
+    return x_int;
+}
+
+// return the K for witch option stop having a lower or equal, cost than the next option
+int high_bound(ReachOption* option, ReachOption* next_option){
+    if(next_option == nullptr){
+        return INF;
+    }
+
+    assert(option->n_hops > next_option->n_hops);
+    assert(option->base_cost <= next_option->base_cost);
+
+    float x = intersection_point(option,next_option);
+
+    int x_int = floor(x);
+
+    // condition for lack of precision floating point division
+    if(option->cost_at(x_int) == next_option->cost_at(x_int)){
+        return x_int;
+    }
+    if(option->cost_at(x_int+1) == next_option->cost_at(x_int+1)){
+        return x_int+1;
+    }
+    if(option->cost_at(x_int-1) == next_option->cost_at(x_int-1)){
+        return x_int-1;
+    }
+
+    return x_int;
+}
+
+ReachOption* next_option(vector<ReachOption>& options, ReachOption* value){
+    ReachOption* last = &options.back();
+    int original_hops = value->n_hops;
+    while (true){
+        if(value == last){
+            return nullptr;
+        }
+        value++;
+        if(value->n_hops != original_hops) {
+            return value;
+        }
+    }
+}
+
+ReachOption* prev_option(vector<ReachOption>& options, ReachOption* value){
+    ReachOption* first = &options.front();
+    int original_hops = value->n_hops;
+    while (true){
+        if(value == first){
+            return nullptr;
+        }
+        value--;
+        if(value->n_hops != original_hops) {
+            return value;
+        }
+    }
+}
+
 vector<Interval> get_intervals(ReachOptions& reach_options){
     vector<Interval> intervals = vector<Interval>();
 
     vector<ReachOption> options = reach_options.options;
 
+    reverse(options.begin(),options.end());
 
+    // now the options are in order from the one with
+    // the lowest base-cost to the one with the highest base-cost
+    // and to the one with highest number of hops to the one with lowest number of hops
+
+    //cout << "options: " << options << endl;
+
+    for(auto& option: options){
+
+        ReachOption* next_option_ptr = next_option(options,&option);
+        ReachOption* prev_option_ptr = prev_option(options,&option);
+
+        int start_interval = low_bound(&option,prev_option_ptr);
+        int end_interval = high_bound(&option,next_option_ptr);
+
+        intervals.emplace_back(start_interval,end_interval,option.has_impostors);
+    }
 
     return intervals;
+}
+
+
+int get_best_k(vector<Interval>& intervals){
+    vector<KValueToTest> k_value_to_test = vector<KValueToTest>();
+
+    for(auto& interval: intervals){
+        if(interval.has_impostor){
+            k_value_to_test.emplace_back(interval.start,AddImpostor);
+            k_value_to_test.emplace_back(interval.end,RemoveImpostor);
+        }else{
+            k_value_to_test.emplace_back(interval.start,TestableOption);
+            if(interval.end == interval.start){
+                continue;
+            }
+            k_value_to_test.emplace_back(interval.end,TestableOption);
+            if(interval.start+1 == interval.end){
+                continue;
+            }
+            k_value_to_test.emplace_back(interval.start+1,TestableOption);
+            if(interval.start+2 == interval.end){
+                continue;
+            }
+            k_value_to_test.emplace_back(interval.end-1,TestableOption);
+        }
+    }
+
+    sort(k_value_to_test.begin(),k_value_to_test.end());
+
+    int n_impostor = 0;
+    int best_k = IMPOSSIBLE;
+
+    for(auto item: k_value_to_test){
+        if(item.kind == AddImpostor){
+            n_impostor++;
+        }else if(item.kind == RemoveImpostor){
+            n_impostor--;
+        }else if(n_impostor == 0){
+            best_k = item.k_value;
+        }
+    }
+
+    return best_k;
 }
 
 /**
@@ -377,7 +620,6 @@ int main(){
     int n_occupied_nodes;
 
     ifstream input("input.txt");
-    ofstream output("output.txt");
 
     input >> n_nodes >> n_edges;
 
@@ -404,26 +646,28 @@ int main(){
 
     graph.propagate_reach_options(POS_BARBIE,max_num_hops);
 
-    cout << graph.nodes[POS_ALGORITMIA].reach_options.options << endl;
+    //cout << "options: " << graph.nodes[POS_ALGORITMIA].reach_options.options << endl;
 
-    // RIMUOVERE PRIMA DELLA CONSEGNA
-    vector<vector<pair<int, int>>> points;
-    for(const auto& p : graph.nodes[POS_ALGORITMIA].reach_options.options){
-        pair<int, int> uno;
-        pair<int, int> due;
-        uno.first= 0;
-        uno.second=600-(p.base_cost+(0*p.n_hops));
-        due.first= 600;
-        due.second= 600-(p.base_cost+(600*p.n_hops));
-        vector<pair<int, int>> v;
-        v.push_back(uno);
-        v.push_back(due);
-        points.push_back(v);
+
+    auto intervals = get_intervals(graph.nodes[POS_ALGORITMIA].reach_options);
+
+    //cout << intervals;
+
+    int best_k = get_best_k(intervals);
+
+    //cout << "The best K is: " << best_k << endl;
+
+
+    ofstream output("output.txt");
+    if(best_k == IMPOSSIBLE){
+        output << -2;// << endl;
+    }else if(best_k == INF){
+        output << -1;// << endl;
+    }else{
+        assert(best_k >= 0);
+        output << best_k;// << endl;
     }
-    plot(points);
-    //
-
-
     output.close();
+
     input.close();
 }
