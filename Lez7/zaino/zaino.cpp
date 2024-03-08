@@ -6,46 +6,38 @@
 
 using namespace std;
 
-class CellRef{
-  public:
-    uint32_t capacity;
-    uint32_t number_of_objects;
-
-    CellRef(uint32_t _capacity, uint32_t _number_of_objects){
-      capacity = _capacity;
-      number_of_objects = _number_of_objects;
-    }
-};
-
-class CellRefPack{
+class Memory{
 public:
-    uint64_t values;
 
-    CellRefPack(CellRef p){
-        values = p.capacity;
-        values <<= 32;
-        values |= p.number_of_objects;
+    vector<unordered_map<int,int>> memory;
+
+    explicit Memory(int number_of_objects){
+        memory = vector<unordered_map<int,int>>();
+        memory.reserve(number_of_objects);
+        for(int i=0; i<number_of_objects; i++){
+            memory.emplace_back();
+        }
     }
 
-    bool operator==(CellRefPack const & other) const{
-        return this->values == other.values;
+    int get(int c, int n){
+
+        auto v = this->memory[n-1].find(c);
+        if (v == memory[n-1].end()){
+            return -1;
+        }
+        return v->second;
+    }
+
+    void set(int c, int n, int to_set){
+        memory[n-1][c] = to_set;
     }
 };
 
-hash<uint64_t> hasher = hash<uint64_t>();
+vector<int> costs;
+vector<int> weights;
+Memory memory = Memory(0);
 
-namespace std{
-  template<>
-  struct hash<CellRefPack>
-  {
-      std::size_t operator()(const CellRefPack c) const
-      {
-          return hasher(c.values);
-      }
-  };
-}
-
-int max_value(vector<int> & costs, vector<int> & weight, unordered_map<CellRefPack,int> & memory, int number_of_objects, int capacity){
+int max_value(int number_of_objects, int capacity){
 
 
     if(capacity < 0){
@@ -56,22 +48,20 @@ int max_value(vector<int> & costs, vector<int> & weight, unordered_map<CellRefPa
         return 0;
     }
 
-    CellRefPack cr = CellRef(capacity, number_of_objects);
+    int v = memory.get(capacity,number_of_objects);
 
-    auto value   = memory.find(cr);
-    if (value != memory.end()){
-        auto x = *value;
-        return get<1>(*value);
+    if(v!=-1){
+        return v;
     }
 
-    int max_if_not_takeing = max_value(costs, weight, memory, number_of_objects - 1, capacity);
-    int max_if_takeing = costs[number_of_objects - 1] + max_value(costs, weight, memory, number_of_objects - 1, capacity - weight[number_of_objects - 1]);
+    int max_if_not_takeing = max_value(number_of_objects - 1, capacity);
+    int max_if_takeing = costs[number_of_objects - 1] + max_value(number_of_objects - 1, capacity - weights[number_of_objects - 1]);
 
-    int val = max(max_if_not_takeing,max_if_takeing);
+    v = max(max_if_not_takeing,max_if_takeing);
 
-    memory[cr] = val;
+    memory.set(capacity,number_of_objects, v);
 
-    return val;
+    return v;
 }
 
 
@@ -83,8 +73,8 @@ int main(){
 
     input >> capacity >> number_of_objects;
 
-    vector<int> costs = vector<int>();
-    vector<int> weights = vector<int>();
+    costs = vector<int>();
+    weights = vector<int>();
     costs.reserve(number_of_objects);
     weights.reserve(number_of_objects);
 
@@ -95,8 +85,8 @@ int main(){
         costs.push_back(cost);
     }
 
-    unordered_map<CellRefPack,int> memory;
-    int result = max_value(costs, weights, memory, number_of_objects, capacity);
+    memory = Memory(number_of_objects);
+    int result = max_value(number_of_objects, capacity);
 
     output << result;
 
