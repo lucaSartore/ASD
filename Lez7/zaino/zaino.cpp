@@ -8,84 +8,99 @@ using namespace std;
 
 class CellRef{
   public:
-    int capacity;
-    int number_of_objects;
+    uint32_t capacity;
+    uint32_t number_of_objects;
 
-    CellRef(int _capacity, int _number_of_objects){
+    CellRef(uint32_t _capacity, uint32_t _number_of_objects){
       capacity = _capacity;
       number_of_objects = _number_of_objects;
     }
+};
 
-    bool operator==(CellRef const & other) const{
-      return other.capacity == this->capacity && other.number_of_objects == this->number_of_objects;
+class CellRefPack{
+public:
+    uint64_t values;
+
+    CellRefPack(CellRef p){
+        values = p.capacity;
+        values <<= 32;
+        values |= p.number_of_objects;
+    }
+
+    bool operator==(CellRefPack const & other) const{
+        return this->values == other.values;
     }
 };
 
+hash<uint64_t> hasher = hash<uint64_t>();
+
 namespace std{
   template<>
-  struct hash<CellRef>
+  struct hash<CellRefPack>
   {
-      std::size_t operator()(const CellRef c) const
+      std::size_t operator()(const CellRefPack c) const
       {
-          int result = 0;
-          result = result ^ (int)hash<int>()(c.capacity);
-          result = result ^ (int)hash<int>()(c.number_of_objects);
-          return (size_t) result;
+          return hasher(c.values);
       }
   };
 }
-int max_value(vector<int> & costs, vector<int> & weight, unordered_map<CellRef,int> & memory, int number_of_object, int capacity){
+
+int max_value(vector<int> & costs, vector<int> & weight, unordered_map<CellRefPack,int> & memory, int number_of_objects, int capacity){
+
+
     if(capacity < 0){
         return INT_MIN;
     }
 
-    if(number_of_object == 0 || capacity == 0){
+    if(number_of_objects == 0 || capacity == 0){
         return 0;
     }
 
-    if (memory.find(CellRef(capacity,number_of_object)) != memory.end()){
-        return memory[CellRef(capacity,number_of_object)];
+    CellRefPack cr = CellRef(capacity, number_of_objects);
+
+    auto value   = memory.find(cr);
+    if (value != memory.end()){
+        auto x = *value;
+        return get<1>(*value);
     }
 
-    int max_if_not_tacking = max_value(costs,weight,memory,number_of_object-1,capacity);
-    int max_if_tacking = costs[number_of_object-1] + max_value(costs,weight,memory,number_of_object-1,capacity - weight[number_of_object-1]);
+    int max_if_not_takeing = max_value(costs, weight, memory, number_of_objects - 1, capacity);
+    int max_if_takeing = costs[number_of_objects - 1] + max_value(costs, weight, memory, number_of_objects - 1, capacity - weight[number_of_objects - 1]);
 
-    int val = max(max_if_not_tacking,max_if_tacking);
+    int val = max(max_if_not_takeing,max_if_takeing);
 
-    memory[CellRef(capacity,number_of_object)] = val;
+    memory[cr] = val;
 
     return val;
 }
 
 
 int main(){
-  ifstream input("input.txt");
-  ofstream output("output.txt");
+    ifstream input("input.txt");
+    ofstream output("output.txt");
 
-  unsigned int capacity, number_objects;
+    int capacity, number_of_objects;
 
-  input >> capacity >> number_objects;
+    input >> capacity >> number_of_objects;
 
-  vector<int> costs = vector<int>();
-  vector<int> weights = vector<int>();
-  costs.reserve(number_objects);
-  weights.reserve(number_objects);
+    vector<int> costs = vector<int>();
+    vector<int> weights = vector<int>();
+    costs.reserve(number_of_objects);
+    weights.reserve(number_of_objects);
 
-  for(int i=0; i<number_objects; i++){
-    unsigned int weight,cost;
-    input >> weight >> cost;
-    weights.push_back(weight);
-    costs.push_back(cost);
-  }
+    for(int i=0; i<number_of_objects; i++){
+        int weight,cost;
+        input >> weight >> cost;
+        weights.push_back(weight);
+        costs.push_back(cost);
+    }
 
-  unordered_map<CellRef,int> memory;
-
-  int result = max_value(costs, weights, memory, number_objects, capacity);
+    unordered_map<CellRefPack,int> memory;
+    int result = max_value(costs, weights, memory, number_of_objects, capacity);
 
     output << result;
 
     input.close();
     output.close();
-
-  return 0;
+    return 0;
 }
