@@ -1,13 +1,10 @@
-
-#include <iostream>
 #include <fstream>
-#include <assert.h>
 #include <vector>
 #include <unordered_map>
 #include <tuple>
 #include <limits.h>
-using namespace std;
 
+using namespace std;
 
 class CellRef{
   public:
@@ -19,7 +16,7 @@ class CellRef{
       number_of_objects = _number_of_objects;
     }
 
-    bool operator==(CellRef& other){
+    bool operator==(CellRef const & other) const{
       return other.capacity == this->capacity && other.number_of_objects == this->number_of_objects;
     }
 };
@@ -37,25 +34,37 @@ namespace std{
       }
   };
 }
-int max_value(vector<int> & costs, vector<int> & weigth, unordered_map<tuple<int,int>,int> & memory, int number_of_object, int capacity){
-  if(capacity < 0){
-    return INT_MIN; 
-  }
-  if(number_of_object == 0 && capacity == 0){
-    return 0;
-  }
-  int result = memory[tuple<int,int>(number_of_object,capacity)];
+int max_value(vector<int> & costs, vector<int> & weight, unordered_map<CellRef,int> & memory, int number_of_object, int capacity){
+    if(capacity < 0){
+        return INT_MIN;
+    }
 
-  return result;
+    if(number_of_object == 0 || capacity == 0){
+        return 0;
+    }
+
+    if (memory.find(CellRef(capacity,number_of_object)) != memory.end()){
+        return memory[CellRef(capacity,number_of_object)];
+    }
+
+    int max_if_not_tacking = max_value(costs,weight,memory,number_of_object-1,capacity);
+    int max_if_tacking = costs[number_of_object-1] + max_value(costs,weight,memory,number_of_object-1,capacity - weight[number_of_object-1]);
+
+    int val = max(max_if_not_tacking,max_if_tacking);
+
+    memory[CellRef(capacity,number_of_object)] = val;
+
+    return val;
 }
 
 
 int main(){
   ifstream input("input.txt");
+  ofstream output("output.txt");
 
-  unsigned int capaciry, number_objects;
+  unsigned int capacity, number_objects;
 
-  input >> capaciry >> number_objects;
+  input >> capacity >> number_objects;
 
   vector<int> costs = vector<int>();
   vector<int> weights = vector<int>();
@@ -69,9 +78,14 @@ int main(){
     costs.push_back(cost);
   }
 
-  unordered_map<tuple<int,int>,int> memory;
+  unordered_map<CellRef,int> memory;
 
-  int result = max_value(costs,weights, memory, number_objects, capaciry)
+  int result = max_value(costs, weights, memory, number_objects, capacity);
+
+    output << result;
+
+    input.close();
+    output.close();
 
   return 0;
 }
