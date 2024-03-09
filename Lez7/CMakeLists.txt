@@ -8,4 +8,6 @@ set(CMAKE_CXX_STANDARD 11)
 
 add_executable(Zaino zaino/zaino.cpp)
 
+add_executable(sottoinscresc "Sottoinsieme Creschente/sottoinscresc.cpp")
+
 add_executable(Zaino2 zaino/zaino_2.cpp)

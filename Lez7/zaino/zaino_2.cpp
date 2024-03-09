@@ -26,10 +26,17 @@ public:
         if(c<0){
             return INT_MIN;
         }
+        if(c == 0 || n == 0){
+            return 0;
+        }
+        c--;
+        n--;
         return memory[c*n_items + n];
     }
 
     void set(int c, int n, int to_set) {
+        c--;
+        n--;
         memory[c * n_items + n] = to_set;
     }
 };
@@ -65,16 +72,11 @@ int main(){
         costs.push_back(cost);
     }
 
-    Memory memory = Memory(number_of_objects+1,capacity+1);
+    Memory memory = Memory(number_of_objects,capacity);
 
 
-    for(int no = 0; no <= number_of_objects; no++){
-        for(int c = 0; c <= capacity; c++){
-
-            if(c == 0 || no == 0){
-                memory.set(c,no,0);
-                continue;
-            }
+    for(int no = 1; no <= number_of_objects; no++){
+        for(int c = 1; c <= capacity; c++){
 
             int max_if_not_takeing = memory.get(c,no-1);
             int max_if_takeing = costs[no - 1] + memory.get(c - weights[no - 1],no-1);
