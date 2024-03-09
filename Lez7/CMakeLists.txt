@@ -7,3 +7,5 @@ set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CXX_STANDARD 11)
 
 add_executable(Zaino zaino/zaino.cpp)
+
+add_executable(Zaino2 zaino/zaino_2.cpp)
