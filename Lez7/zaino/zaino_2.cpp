@@ -8,48 +8,19 @@
 
 using namespace std;
 
-class Memory{
-public:
-
-    int* memory;
-    int n_items;
-    int capacity;
 
 
-    explicit Memory(int _n_items, int _capacity){
-        memory = new int[_n_items * _capacity];
-        n_items = _n_items;
-        capacity = _capacity;
+void printv(vector<int>& v){
+    cout << "[" << endl;
+    int c = 0;
+    for(auto node: v){
+        cout << "\t" << c <<": " << node << "\n";
+        c++;
     }
+    cout << "]\n";
 
-    int get(int c, int n) const{
-        if(c<0){
-            return INT_MIN;
-        }
-        if(c == 0 || n == 0){
-            return 0;
-        }
-        c--;
-        n--;
-        return memory[c*n_items + n];
-    }
-
-    void set(int c, int n, int to_set) {
-        c--;
-        n--;
-        memory[c * n_items + n] = to_set;
-    }
-};
-
-ostream& operator<<(ostream& os, const Memory& mem){
-    for(int c = 0; c < mem.capacity; c++){
-        for(int n=0; n<mem.n_items; n++){
-            os << mem.get(c,n) << "\t";
-        }
-        os << endl;
-    };
-    return os;
 }
+
 
 int main(){
     ifstream input("input.txt");
@@ -72,20 +43,37 @@ int main(){
         costs.push_back(cost);
     }
 
-    Memory memory = Memory(number_of_objects,capacity);
 
+    vector<int> vector_1 = vector<int>(capacity+1,0);
+    vector<int> vector_2 = vector<int>(capacity+1,0);
+
+    vector<int>* dp = &vector_1;
+    vector<int>* dp_pre = &vector_2;
 
     for(int no = 1; no <= number_of_objects; no++){
-        for(int c = 1; c <= capacity; c++){
+        for(int c = 0; c <= capacity; c++){
 
-            int max_if_not_takeing = memory.get(c,no-1);
-            int max_if_takeing = costs[no - 1] + memory.get(c - weights[no - 1],no-1);
+            bool can_take = weights[no-1] <= c;
 
-            memory.set(c,no,max(max_if_not_takeing,max_if_takeing));
+            int max_if_take = 0;
+            if(can_take){
+                max_if_take = costs[no-1] + (*dp_pre)[c - weights[no-1]];
+            }
+            int max_if_not_take = (*dp_pre)[c];
+
+            (*dp)[c] = max(max_if_take,max_if_not_take);
         }
+
+        //printv(*dp);
+
+
+        vector<int>* tmp = dp;
+        dp = dp_pre;
+        dp_pre = tmp;
     }
 
-    output << memory.get(capacity,number_of_objects);
+
+    output << (*dp_pre)[capacity];
 
     //cout << memory;
 
