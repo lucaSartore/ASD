@@ -59,7 +59,7 @@ public:
         if(v == memory[item].end()){
             return UNINIT;
         }
-        return v->second
+        return v->second;
     }
 
     void set(int item, int distinct_item_id, int value){
@@ -159,12 +159,45 @@ int main(){
         elements.push_back(x);
     }
 
+
     SetOfElements soe = SetOfElements(elements);
 
     Memory m = Memory(n_object,soe.set_of_elements.size());
 
-    output << get_max_sum(soe.set_of_elements.size()-1,n_object-1,m,soe,elements);
-    //cout << m << endl;
+    int distinct_max_values = soe.set_of_elements.size();
+
+    vector<int> max_sum_by_max_id(distinct_max_values,UNINIT);
+    vector<int> max_sum_by_max_id_prev(distinct_max_values,0);
+
+    for(int item_value: elements){
+        for(int id_max_value = 0; id_max_value<distinct_max_values; id_max_value++){
+
+            int max_value = soe.id_to_number(id_max_value);
+            int item_id = soe.number_to_id(item_value);
+
+            bool can_take = item_value <= max_value;
+
+            int max_if_take = 0;
+            if(can_take){
+                if(item_id != 0){
+                    max_if_take = item_value + max_sum_by_max_id_prev[item_id-1];
+                }else{
+                    max_if_take = item_value;
+                }
+            }
+            
+            int max_if_not_take = max_sum_by_max_id_prev[id_max_value];
+
+            int value = max(max_if_not_take,max_if_take);
+
+            max_sum_by_max_id[id_max_value] = value;
+        }
+
+        copy(max_sum_by_max_id.begin(),max_sum_by_max_id.end(),max_sum_by_max_id_prev.begin());
+    }
+
+    output << max_sum_by_max_id_prev[distinct_max_values-1];
+
 
     input.close();
     output.close();
