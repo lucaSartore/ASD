@@ -1,7 +1,3 @@
-//
-// Created by lucas on 09/03/2024.
-//
-
 #include <unordered_map>
 #include <iostream>
 #include <fstream>
@@ -11,7 +7,6 @@
 #include <vector>
 using namespace std;
 
-#define UNINIT INT_MIN
 
 class SetOfElements{
 public:
@@ -38,104 +33,17 @@ public:
     int number_to_id(int number)const{
         return reverse_set_of_elements.find(number)->second;
     }
-
 };
 
-class Memory{
-public:
-
-    vector<unordered_map<int,int>> memory;
-    int n_items;
-    int n_distinct_items;
-
-    Memory(int _n_items, int _n_distinct_items ){
-        n_items = _n_items;
-        n_distinct_items = _n_distinct_items;
-        memory = vector<unordered_map<int,int>>(_n_items,unordered_map<int,int>());
+template<typename T>
+ostream& operator<< (ostream& os, vector<T>* v){
+    os << "[";
+    for(auto x: *v){
+        os << x << "\t";
     }
-
-    int get(int item, int distinct_item_id) const{
-        auto v = memory[item].find(distinct_item_id);
-        if(v == memory[item].end()){
-            return UNINIT;
-        }
-        return v->second;
-    }
-
-    void set(int item, int distinct_item_id, int value){
-        memory[item][distinct_item_id] = value;
-    }
-};
-
-ostream& operator<<(ostream& os, const Memory& mem){
-    for(int c = 0; c < mem.n_distinct_items; c++){
-        for(int n=0; n<mem.n_items; n++){
-            int v = mem.get(c,n);
-            if(v == UNINIT){
-                os << "U" << "\t";
-            }else{
-                os << v << "\t";
-            }
-        }
-        os << endl;
-    };
+    os << "]";
     return os;
 }
-
-
-int get_max_value(int number, unordered_map<int,int> & max_value_to_max_sum){
-    auto v = max_value_to_max_sum.find(number);
-    if(v != max_value_to_max_sum.end()){
-        return v->second;
-    }
-    return 0;
-}
-
-// item_index: pointer to the array of values
-// id_max_value:  item id to the array of distinct values
-// soe.id_to_number(id_max_value): the max value an item can have to be included in the valuation (included)
-// index means it points to the array of inputs
-// id means it points to the sorted array of unique dimensions
-int get_max_sum(int id_max_value, int item_index, Memory & m, SetOfElements const & soe, vector<int> const & array){
-
-    if(id_max_value == -1){
-        return 0;
-    }
-
-    int item_value = array[item_index];
-    int max_value = soe.id_to_number(id_max_value);
-    int item_id = soe.number_to_id(item_value);
-
-
-    bool can_take = item_value <= max_value;
-
-    if(item_index == 0){
-        if(can_take){
-            m.set(item_index,id_max_value,item_value);
-            return item_value;
-        } else{
-            m.set(item_index,id_max_value,0);
-            return 0;
-        }
-    }
-
-    int v = m.get(item_index, id_max_value);
-    if(v != UNINIT){
-        return v;
-    }
-
-    int max_if_take = 0;
-    if(can_take){
-        max_if_take = item_value + get_max_sum(item_id-1,item_index-1,m,soe,array);
-    }
-    int max_if_not_take = get_max_sum(id_max_value,item_index-1,m,soe,array);
-
-    int value = max(max_if_not_take,max_if_take);
-
-    m.set(item_index,id_max_value,value);
-    return value;
-}
-
 
 
 int main(){
@@ -144,8 +52,6 @@ int main(){
     ofstream output("output.txt");
 
     unordered_map<int,int> max_value_to_max_sum = unordered_map<int,int>();
-
-    int max_so_far = 0;
 
     int n_object;
     input >> n_object;
@@ -159,45 +65,56 @@ int main(){
         elements.push_back(x);
     }
 
-
     SetOfElements soe = SetOfElements(elements);
-
-    Memory m = Memory(n_object,soe.set_of_elements.size());
 
     int distinct_max_values = soe.set_of_elements.size();
 
-    vector<int> max_sum_by_max_id(distinct_max_values,UNINIT);
-    vector<int> max_sum_by_max_id_prev(distinct_max_values,0);
+    vector<int>elements_ids = vector<int>(elements.size(),0);
+    //elements_ids.reserve(elements.size(),0);
 
-    for(int item_value: elements){
+    transform(elements.begin(),elements.end(),elements_ids.begin(),[&soe](int x){return  soe.number_to_id(x);});
+
+    vector<int> m1(distinct_max_values,0);
+    vector<int> m2(distinct_max_values,0);
+
+    vector<int>* max_sum_by_max_id = &m1;
+    vector<int>* max_sum_by_max_id_prev = &m2;
+
+    //cout << max_sum_by_max_id_prev << endl;
+
+    for(int i=0; i<n_object; i++){
+
+        int item_id = elements_ids[i];
+
         for(int id_max_value = 0; id_max_value<distinct_max_values; id_max_value++){
 
-            int max_value = soe.id_to_number(id_max_value);
-            int item_id = soe.number_to_id(item_value);
+            bool can_take = item_id <= id_max_value;
 
-            bool can_take = item_value <= max_value;
+            int max_value_if_not_take = (*max_sum_by_max_id_prev)[id_max_value];
 
-            int max_if_take = 0;
+            int max_value_if_take = 0;
             if(can_take){
-                if(item_id != 0){
-                    max_if_take = item_value + max_sum_by_max_id_prev[item_id-1];
-                }else{
-                    max_if_take = item_value;
-                }
+
+                int item_value = soe.id_to_number(item_id);
+
+
+                max_value_if_take = item_value + (*max_sum_by_max_id_prev)[item_id];
+
             }
-            
-            int max_if_not_take = max_sum_by_max_id_prev[id_max_value];
 
-            int value = max(max_if_not_take,max_if_take);
+            int max_value = max(max_value_if_take,max_value_if_not_take);
 
-            max_sum_by_max_id[id_max_value] = value;
+            (*max_sum_by_max_id)[id_max_value] = max_value;
         }
 
-        copy(max_sum_by_max_id.begin(),max_sum_by_max_id.end(),max_sum_by_max_id_prev.begin());
+        //cout << max_sum_by_max_id << endl;
+
+        vector<int>* tmp = max_sum_by_max_id;
+        max_sum_by_max_id = max_sum_by_max_id_prev;
+        max_sum_by_max_id_prev = tmp;
     }
 
-    output << max_sum_by_max_id_prev[distinct_max_values-1];
-
+    output << max_sum_by_max_id_prev->end().operator--().operator*();
 
     input.close();
     output.close();
