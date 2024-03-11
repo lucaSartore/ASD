@@ -12,3 +12,5 @@ add_executable(sottoinscresc "Sottoinsieme Creschente/sottoinscresc.cpp")
 add_executable(sottoinscrescV2 "Sottoinsieme Creschente/sottoinscrescV2.cpp")
 
 add_executable(Zaino2 zaino/zaino_2.cpp)
+
+add_executable(Pillole Pillole/pillole.cpp)
