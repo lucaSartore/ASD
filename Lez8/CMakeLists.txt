@@ -8,4 +8,5 @@ set(CMAKE_CXX_STANDARD 11)
 
 
 add_executable(MinCover "MinCover/main.cpp")
+add_executable(MinCoverPesata "MinCoverPesata /main.cpp")
 add_executable(LCS "LCS/main.cpp")
