@@ -6,4 +6,6 @@ set(CMAKE_BUILD_TYPE Debug)
 
 set(CMAKE_CXX_STANDARD 11)
 
+
+add_executable(MinCover "MinCover/main.cpp")
 add_executable(LCS "LCS/main.cpp")
