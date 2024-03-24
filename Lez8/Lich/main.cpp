@@ -9,6 +9,8 @@
 #include <vector>
 #include <map>
 #include <deque>
+#include <climits>
+#include <queue>
 using  namespace  std;
 
 class FirstStageNode;
@@ -16,28 +18,29 @@ class FirstStageNode;
 class Link{
 public:
     FirstStageNode* node;
-    int max_distance_from_portal;
     int distance;
 };
+
 
 class FirstStageNode{
 public:
     int id;
     vector<Link> adjacent;
-    bool is_portal;
-    Link father;
-    //the distance to the furthest portal going down the tree
-    int portal_distance_down;
-    //the distance to the furthest portal going up the tree
-    int portal_distance_up;
-    int max_distance_portal;
+    int distance_closest_portal;
+    int distance_furthest_portal;
     void insert_adjacent(FirstStageNode* node, int distance){
-        adjacent.push_back(Link{node,0, distance});
+        adjacent.push_back(Link{node, distance});
+    }
+    void delete_adjacent(FirstStageNode* node){
+        for(auto i = adjacent.begin(); i != adjacent.end(); i++){
+            if(i->node == node){
+                adjacent.erase(i);
+                break;
+            }
+        }
     }
     explicit FirstStageNode(int _id){
         id = _id;
-        is_portal = false;
-        father = Link{nullptr,0,0};
         adjacent = vector<Link>();
     }
 };
@@ -58,110 +61,90 @@ public:
        nodes[n1].insert_adjacent(&nodes[n2],cost);
        nodes[n2].insert_adjacent(&nodes[n1],cost);
    }
-   void find_portals(){
-      for(auto& node: nodes){
-          if(node.adjacent.size() == 1){
-              node.is_portal = true;
-          }
-      }
-   }
-   void fill_father(){
-       vector<bool> visited = vector<bool>(nodes.size(), false);
-       vector<bool> pushed = vector<bool>(nodes.size(), false);
+   class InQueueObject{
+   public:
+       int priority;
+       FirstStageNode* node;
+       bool operator<(InQueueObject const &other) const{
+           return priority > other.priority;
+       }
+   };
 
-        deque<FirstStageNode*> to_visit;
+   void fill_distance_closest_portal() {
 
-       for(auto& node: nodes){ if(node.is_portal){
-               to_visit.push_back(&node);
-               pushed[node.id] = true;
+        priority_queue<InQueueObject> to_visit = priority_queue<InQueueObject>();
+
+       for(auto& node: nodes){
+           if(node.adjacent.size() == 1){
+               to_visit.push(InQueueObject{0,&node});
            }
+           node.distance_closest_portal = -1;
        }
 
        while (!to_visit.empty()){
-          auto node = to_visit.front();
-          to_visit.pop_front();
 
-          // the last node to be removed from the vector will be the
-          root = node->id;
+           auto node = to_visit.top();
+           to_visit.pop();
 
-          visited[node->id] = true;
-
-          for(auto adj: node->adjacent){
-              if(visited[adj.node->id]){
-                  continue;
-              }
-              node->father = adj;
-              if(!pushed[adj.node->id]){
-                  to_visit.push_back(adj.node);
-              }
-          }
-       }
-   }
-
-   int fill_portal_distance_down(FirstStageNode* node) {
-
-       if(node->is_portal){
-           node->portal_distance_down = 0;
-           return 0;
-       }
-
-       int max_distance = INT_MIN;
-
-       for(auto& link: node->adjacent){
-           if(link.node == node->father.node){
+           if(node.node->distance_closest_portal != -1 && node.node->distance_closest_portal < node.priority){
+               // I already popped this node before, so i don't need to update it again
                continue;
            }
-           int d = link.distance + fill_portal_distance_down(link.node);
-           max_distance = max(max_distance,d);
-       }
 
-       node->portal_distance_down = max_distance;
-       return max_distance;
-   }
+           node.node->distance_closest_portal= node.priority;
 
-   void fill_portal_distance_up(FirstStageNode* node){
-
-        if(node->father.node == nullptr){
-            node->portal_distance_up = -1;
-        }else{
-
-           int max_distance = node->father.node->portal_distance_up;
-
-           for(auto & next_hop: node->father.node->adjacent){
-               // can't go back, otherwise it won't be a proper "road"
-               if(next_hop.node == node || next_hop.node == node->father.node->father.node){
-                   continue;
+           for(auto& adj: node.node->adjacent){
+               if(adj.node->distance_closest_portal == -1){
+                   to_visit.push(InQueueObject{node.node->distance_closest_portal + adj.distance, adj.node});
                }
-
-               max_distance = max(max_distance,next_hop.node->portal_distance_down + next_hop.distance);
            }
+       }
+   }
 
-           max_distance += node->father.distance;
+    void remove_father_pointers_r(FirstStageNode* father){
+       for(auto& node: father->adjacent){
+           node.node->delete_adjacent(father);
+           remove_father_pointers_r(node.node);
+       }
+    }
+   void remove_father_pointers(){
+      int father_id = -1;
+      int max_distance_closest_portal = 0;
+      int  current_id = 0;
+      for(auto& node: nodes){
+          if(node.distance_closest_portal > max_distance_closest_portal){
+              max_distance_closest_portal = node.distance_closest_portal;
+              father_id = current_id;
+          }
+          current_id++;
+      }
+       this->root = father_id;
+       remove_father_pointers_r(&nodes[father_id]);
+   }
 
-           node->portal_distance_up = max_distance;
-        }
+   int get_distance_furthest_portal_down_the_tree(FirstStageNode* node){
+       int max_v = 0;
+       for(auto&node: node->adjacent){
+           max_v = max(max_v, get_distance_furthest_portal_down_the_tree(node.node)+node.distance);
+       }
+       return max_v;
+   }
 
+   void fill_distance_furthest_portal(FirstStageNode* node){
         for(auto& adj: node->adjacent){
-            if(adj.node == node->father.node){
-                continue;
-            }
-            fill_portal_distance_up(adj.node);
-        }
-
-   }
-
-   void fill_max_distance_portal(){
-        for(auto& node: nodes){
-            node.max_distance_portal = max(node.portal_distance_up,node.portal_distance_down);
+            adj.node->distance_furthest_portal = node->distance_furthest_portal + adj.distance;
+            fill_distance_furthest_portal(adj.node);
         }
    }
 
-   void fill_portal_distance(){
-       fill_portal_distance_down(&nodes[root]);
-       fill_portal_distance_up(&nodes[root]);
+   void fill_portal_distances(){
+       fill_distance_closest_portal();
+       remove_father_pointers();
+       int max_d = get_distance_furthest_portal_down_the_tree(&nodes[root]);
+       nodes[root].distance_furthest_portal = max_d;
+       fill_distance_furthest_portal(&nodes[root]);
    }
 };
-
 
 
 class SecondStageNode;
@@ -175,17 +158,25 @@ class SecondStageNode{
 public:
     int id;
     vector<Link2> adjacent;
-    Link2 father;
-    void insert_father(SecondStageNode* node, int distance){
-        father = Link2{node,distance};
-    }
     void insert_adjacent(SecondStageNode* node, int distance){
         adjacent.push_back(Link2{node, distance});
     }
     explicit SecondStageNode(int _id){
         id = _id;
-        father = Link2{nullptr,0};
         adjacent = vector<Link2>();
+    }
+    int count_reachable_town_in_distance(int distance){
+       if(distance == 0){
+           return 1;
+       }
+       if(distance < 0){
+           return 0;
+       }
+       int reachable = 1;
+       for(auto &adj: adjacent){
+           reachable += adj.node->count_reachable_town_in_distance(distance-adj.distance);
+       }
+        return reachable;
     }
 };
 
@@ -203,30 +194,16 @@ public:
     }
     void insert_link(int father, int child, int cost){
         nodes[father].insert_adjacent(&nodes[child],cost);
-        nodes[child].insert_adjacent(&nodes[father],cost);
-        nodes[child].insert_father(&nodes[father],cost);
+    }
+
+    int get_max_n(int distance){
+        int max_n = 0;
+        for(auto& node: nodes){
+            max_n = max(max_n,node.count_reachable_town_in_distance(distance));
+        }
+        return max_n;
     }
 };
-
-void transpose_graph_r(FirstStageNode* node, SecondStageGraph& g){
-
-    for(auto &adj: node->adjacent){
-        if(adj.node == node->father.node){
-            continue;
-        }
-        g.insert_link()
-    }
-
-
-}
-
-SecondStageGraph transpose_graph(FirstStageGraph & graph){
-    SecondStageGraph g = SecondStageGraph(graph.nodes.size());
-
-
-
-
-}
 
 int main(){
     ifstream input("input.txt");
@@ -243,10 +220,9 @@ int main(){
         g1.insert_link(p,a,w);
     }
 
-    g1.find_portals();
-    g1.fill_father();
-    g1.fill_portal_distance();
-    g1.fill_max_distance_portal();
+    g1.fill_portal_distances();
+
+
     input.close();
     output.close();
     return 0;
