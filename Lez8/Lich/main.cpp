@@ -1,9 +1,3 @@
-//
-// Created by lucas on 23/03/2024.
-//
-//
-// Created by lucas on 23/03/2024.
-//
 #include <iostream>
 #include <fstream>
 #include <vector>

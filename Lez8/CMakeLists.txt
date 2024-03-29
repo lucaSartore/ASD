@@ -11,4 +11,7 @@ add_executable(MinCover "MinCover/main.cpp")
 add_executable(MinCoverPesata "MinCoverPesata /main.cpp")
 add_executable(LCS "LCS/main.cpp")
 add_executable(Lich "Lich/main.cpp")
+add_executable(Lich3 "Lich/main3.cpp")
 add_executable(Nassau "Nassau/main.cpp")
+
+configure_file("./Lich/input.txt" "./" COPYONLY)
