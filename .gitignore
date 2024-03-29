@@ -48,3 +48,6 @@ _deps
 Lez1/.idea
 .idea
 Lez1/cmake-build-debug
+.vs/
+out/
+enc_temp_folder/
