@@ -7,9 +7,11 @@
 #include <queue>
 #include <set>
 #include <cassert>
+#include <unordered_map>
 using  namespace  std;
 
 int max_k;
+
 
 class ReachOptions {
 public:
@@ -74,6 +76,7 @@ public:
     }
 
 };
+
 
 
 class FirstStageNode;
@@ -167,6 +170,42 @@ public:
 
     }
 
+    ReachOptions fill_reach_options(unordered_map<int,int>& results) {
+
+        vector<ReachOptions> ros = vector<ReachOptions>();
+        
+        ros.push_back(ReachOptions());
+
+
+        for (auto& child : adjacent) {
+
+            if (child.node->id == father_id) {
+                continue;
+            }
+
+            auto ro = child.node->fill_reach_options(results);
+            
+            int increasing_distance = child.node->distance_furthest_portal - distance_furthest_portal;
+            
+            ro.increase_distance_by(increasing_distance);
+
+            ros.push_back(ro);
+        }
+
+        auto final_ro= ReachOptions::merge(ros);
+
+        for (auto& k : results) {
+            int key = k.first;
+            int value = final_ro.get_number_of_soldier_with_cost_lower_or_equal_to(key);
+            if (results[key] < value) {
+                results[key] = value;
+            }
+        }
+
+
+        return final_ro;
+    }
+
 };
 
 class FirstStageGraph {
@@ -246,86 +285,6 @@ public:
 };
 
 
-class SecondStageNode{
-public:
-    
-    vector<SecondStageNode*> adjacent;
-    ReachOptions reach_options;
-    int distance_furthest_portal;
-
-    void insert_adjacent(SecondStageNode* node){
-        adjacent.push_back(node);
-    }
-
-    explicit SecondStageNode(int _distance_furthest_portal){
-        distance_furthest_portal = _distance_furthest_portal;
-        adjacent = vector<SecondStageNode*>();
-        reach_options = ReachOptions();
-    }
-
-    int count_if_this_is_first_attacker(int k) {
-        return reach_options.get_number_of_soldier_with_cost_lower_or_equal_to(k);
-    }
-
-
-    void fill_reach_options() {
-
-        vector<ReachOptions> v = vector<ReachOptions>();
-
-        v.push_back(ReachOptions());
-
-        for (auto& child : adjacent) {
-            child->fill_reach_options();
-            auto child_reach_options = child->reach_options;
-            int increasing_distance = child->distance_furthest_portal - distance_furthest_portal;
-            child_reach_options.increase_distance_by(increasing_distance);
-            v.push_back(std::move(child_reach_options));
-        }
-
-        reach_options = ReachOptions::merge(v);
-    }
-};
-
-class SecondStageTree {
-public:
-    vector<SecondStageNode> nodes;
-    int root;
-
-    SecondStageTree(FirstStageGraph & g1) {
-        root = g1.root;
-        nodes = vector<SecondStageNode>();
-        nodes.reserve(g1.nodes.size());
-        
-        for (auto& node : g1.nodes) {
-            nodes.push_back(SecondStageNode(node.distance_furthest_portal));
-        }
-        
-        for (auto& node : g1.nodes) {
-            for (auto& child : node.adjacent) {
-                if (child.node->id == node.father_id) {
-                    continue;
-                }
-                insert_link(node.id, child.node->id);
-            }
-            nodes[node.id].adjacent.shrink_to_fit();
-            node.adjacent = vector<Link>();
-        }
-    }
-    void insert_link(int father, int chil) {
-        nodes[father].insert_adjacent(&nodes[chil]);
-    }
-
-    void fill_reach_options() {
-        nodes[root].fill_reach_options();
-    }
-
-    void optimize_memory() {
-        for (auto& n : nodes) {
-            n.adjacent.shrink_to_fit();
-        }
-    }
-};
-
 
 int main(){
     ifstream input("input.txt");
@@ -351,6 +310,8 @@ int main(){
     k_vec.reserve(n);
 
     max_k = 0;
+    
+    auto results = unordered_map<int, int>();
 
     for (int i = 0 ; i < n; i++) {
         int max_v = 0;
@@ -358,23 +319,18 @@ int main(){
         input >> k;
         k_vec.push_back(k);
         max_k = max(max_k, k);
+        results[k] = 0;
     }
 
     g1.fill_fathers();
     g1.fill_max_distance_down();
     g1.fill_max_distance();
     g1.fill_fathers_from_closest_city();
-    //return 0;
-    auto g2 = SecondStageTree(g1);
-    g1.forget_everything();
-    g2.fill_reach_options();
-    g2.optimize_memory();
+
+     g1.nodes[g1.root].fill_reach_options(results);
 
     for (int k : k_vec) {
-        int max_v = 0;
-        for (auto& node : g2.nodes) {
-            max_v = max(max_v, node.count_if_this_is_first_attacker(k));
-        }
+        int max_v = results[k];
         output << max_v << endl;
         cout << max_v << " ";
     }
