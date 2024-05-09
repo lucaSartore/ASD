@@ -91,6 +91,22 @@ void add_to_map(unordered_map<Option,double>& map, Option option, double probabi
     }
 }
 
+double pow(double base, int exponent){
+    bool is_negative = false;
+    if(exponent < 0){
+        is_negative = true;
+        exponent *= -1;
+    }
+    double result = 1;
+    for(int i=0; i<exponent; i++){
+        result *= base;
+    }
+    if(is_negative){
+        result = 1.0/result;
+    }
+    return result;
+}
+
 double calculate_strength(Option starting_position, int n_cannon_balls){
    unordered_map<Option,double> d1 = unordered_map<Option,double>();
    unordered_map<Option,double> d2 = unordered_map<Option,double>();
@@ -101,31 +117,41 @@ double calculate_strength(Option starting_position, int n_cannon_balls){
     current_map[starting_position] = 1.0;
 
     for(int i=0; i<n_cannon_balls; i++){
-
-       for(auto item: current_map){
-
+       for(auto item: current_map) {
            auto option = item.first;
            auto probability = item.second;
 
            double probability_hit_frigate = option.get_probability_of_hitting_frigate();
-           if (probability_hit_frigate != 0){
-               add_to_map(next_map,option.minus_one_frigate(),probability*probability_hit_frigate);
-           }
-
+           add_to_map(next_map, option.minus_one_frigate(), probability * probability_hit_frigate);
 
            double probability_hit_vessel = option.get_probability_of_hitting_vessel();
-           if (probability_hit_vessel != 0){
-               add_to_map(next_map,option.minus_one_vessel(),probability*probability_hit_vessel);
-           }
+           add_to_map(next_map, option.minus_one_vessel(), probability * probability_hit_vessel);
 
            double probability_hit_damaged_vessel = option.get_probability_of_hitting_damaged_vessel();
-           if (probability_hit_damaged_vessel != 0){
-               add_to_map(next_map,option.minus_one_damaged_vessel(),probability*probability_hit_damaged_vessel);
+           add_to_map(next_map, option.minus_one_damaged_vessel(), probability * probability_hit_damaged_vessel);
+       }
+       current_map = next_map;
+       next_map = unordered_map<Option,double>();
+
+      // clean current map
+      double max_probability = 0.0;
+      for(auto & p: current_map){
+          max_probability = max(max_probability,p.second);
+      }
+
+      vector<Option> to_remove = vector<Option>();
+
+      double threshold = max_probability / pow(10.0,12);
+
+       for(auto & p: current_map){
+           if(p.second/max_probability < threshold){
+               to_remove.push_back(p.first);
            }
        }
 
-        current_map = next_map;
-       next_map = unordered_map<Option,double>();
+       for(auto & r: to_remove){
+           current_map.erase(r);
+       }
     }
     double total_power = 0;
     for(auto item: current_map){
@@ -147,7 +173,6 @@ int main(){
     double strength = calculate_strength(Option(vessel,0,frigates),cannon_balls);
 
     output << scientific << setprecision(10) << strength;
-
 
     input.close();
     output.close();
