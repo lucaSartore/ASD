@@ -86,6 +86,8 @@ int main(){
 
     find_path(min_distance,distances,visited,0,0,size,path,0, output);
 
+    cout << min_distance;
+
     output.close();
     input.close();
 

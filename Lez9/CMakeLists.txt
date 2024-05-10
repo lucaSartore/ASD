@@ -8,4 +8,5 @@ set(CMAKE_CXX_STANDARD 11)
 
 
 add_executable( tsp "tsp/tsp.cpp")
+add_executable( tsp2 "tsp/tsp2.cpp")
 
