@@ -1,20 +1,58 @@
 //
 // Created by lucas on 23/03/2024.
 //
-//#include "tsp.h"
+#include "tsp.h"
 
 #include <vector>
 #include <iostream>
 #include <fstream>
 #include <climits>
+#include <algorithm>
+#include <random>
 using namespace std;
 
 
 #define SWAP_SINGLE_MUTATION_PROBABILITY 50
-#define POPULATION_SIZE 1000
-#define ATTEMPTS 10
+#define POPULATION_SIZE 400
+#define ATTEMPTS 100000000000
 #define BLOCK_REVERT_PROBABILITY 50
+#define ALLOWED_REATTEMPTS 25
+#define REORDER_LEN 6
 
+auto re = default_random_engine(0);
+
+vector<bool> visited;
+
+void find_path(int& current_min, vector<vector<int>>& distances, int current_distance, int current_node, int size, vector<int> current_path, int count, ofstream& fs, vector<int> &nodes_to_visit){
+
+    if(current_distance >= current_min){
+        return;
+    }
+
+    current_path[count] = current_node;
+
+    if(count+1 == size ){
+
+        current_distance += distances[current_node][0];
+
+        if(current_distance >= current_min){
+            return;
+        }
+
+        current_min = current_distance;
+    }
+
+    visited[current_node] = true;
+
+    for(int i: nodes_to_visit){
+        if(visited[i]){
+            continue;
+        }
+        find_path(current_min, distances, current_distance + distances[i][current_node], i, size,current_path,count+1, fs, nodes_to_visit);
+    }
+
+    visited[current_node] = false;
+}
 class Solution{
 public:
     vector<int> cityes;
@@ -24,9 +62,10 @@ public:
        for(int i=0; i<size; i++){
            cityes[i] = i;
        }
+        shuffle(cityes.begin(),cityes.end(),re);
     }
 
-    void mutate(){
+    void mutate(vector<vector<int>> g){
        if(rand()%101 <= SWAP_SINGLE_MUTATION_PROBABILITY){
             swap_single_mutation();
        }else{
@@ -77,6 +116,19 @@ public:
         }
         return c;
     }
+
+    void reorder(vector<vector<int>> g){
+        int reorder_len = max(REORDER_LEN,(int)cityes.size());
+        vector<int> to_reorder = vector<int>(reorder_len ,0);
+        int reorder_start = rand()%cityes.size();
+        for(int i=0; i<reorder_len; i++){
+           int p = (reorder_start + i)%cityes.size();
+           to_reorder[i]=cityes[p];
+        }
+        vector<int> reordered = vector<int>(reorder_len ,0);
+        int current_min = INT_MAX;
+        find_path(current_min,g,0,to_reorder[0],reorder_len,)
+    }
 };
 
 Solution mutation_cycle(Solution current_solution, vector<vector<int>> & distances){
@@ -106,13 +158,6 @@ int main(){
     int size;
     input >> size;
 
-    /*
-    for(int i=0; i<size; i++){
-        output << i << " ";
-    }
-    output <<"0 #" << endl;
-    return 0;
-    */
 
     vector<vector<int>> distances = vector<vector<int>>();
     distances.reserve(size);
@@ -135,12 +180,17 @@ int main(){
     for(int i=0; i<ATTEMPTS; i++){
 
         Solution solution(size);
-
+        int current_reattempts = 0;
         while (true){
 
             Solution new_solution = mutation_cycle(solution,distances);
             if(new_solution.cityes.empty()){
-                break;
+                current_reattempts++;
+                if(current_reattempts>ALLOWED_REATTEMPTS) {
+                    break;
+                }else{
+                    continue;
+                }
             }
             solution = new_solution;
         }
