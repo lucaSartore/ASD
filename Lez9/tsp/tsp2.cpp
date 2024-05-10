@@ -12,7 +12,8 @@ using namespace std;
 
 #define SWAP_SINGLE_MUTATION_PROBABILITY 50
 #define POPULATION_SIZE 1000
-
+#define ATTEMPTS 10
+#define BLOCK_REVERT_PROBABILITY 50
 
 class Solution{
 public:
@@ -42,6 +43,11 @@ public:
     }
 
     void swap_block_mutation(){
+
+        bool revert = rand()%100 < BLOCK_REVERT_PROBABILITY;
+
+        //revert = false;
+
         int swap_size = rand()%(cityes.size()/2-1);
         int first_index = rand()%cityes.size();
         int second_index_max_distance = cityes.size()-2*swap_size;
@@ -49,7 +55,12 @@ public:
 
         for(int i=0; i<swap_size; i++){
             int x1 = (first_index+i)%cityes.size();
-            int x2 = (second_index+i)%cityes.size();
+            int x2;
+            if(!revert){
+                x2 = (second_index+i)%cityes.size();
+            }else{
+                x2 = (second_index + swap_size -1 -i + cityes.size())%cityes.size();
+            }
             int tmp = cityes[x1];
             cityes[x1] = cityes[x2];
             cityes[x2] = tmp;
@@ -119,19 +130,32 @@ int main(){
         }
     }
 
-    Solution solution(size);
+    int current_best = INT_MAX;
 
-    while (true){
+    for(int i=0; i<ATTEMPTS; i++){
 
+        Solution solution(size);
+
+        while (true){
+
+            Solution new_solution = mutation_cycle(solution,distances);
+            if(new_solution.cityes.empty()){
+                break;
+            }
+            solution = new_solution;
+        }
+
+        int new_cost = solution.get_total_distance(distances);
+
+        if(new_cost > current_best){
+            continue;
+        }
+        current_best = new_cost;
         for(auto e: solution.cityes){
             output << e << " ";
         }
         output << solution.cityes[0] << " #" << endl;
 
-        solution = mutation_cycle(solution,distances);
-        if(solution.cityes.empty()){
-            break;
-        }
     }
 
 
