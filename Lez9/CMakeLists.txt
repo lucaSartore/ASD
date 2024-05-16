@@ -9,6 +9,7 @@ set(CMAKE_CXX_STANDARD 11)
 
 
 add_executable( tsp "tsp/tsp.cpp")
+add_executable( got "got/got.cpp")
 add_executable( tsp2 "tsp/tsp2.cpp")
 add_executable( tsp3 "tsp/tsp3.cpp")
 add_executable( alpini "alpini/alpini.cpp")
