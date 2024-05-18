@@ -204,7 +204,6 @@ bool try_expand_castle(Solution & solution, Castle castle, vector<vector<bool>>&
             return true;
         }
 
-        solution.tiles[p.x][p.y] = castle.size;
 
         Castle castle_to_restore = Castle(p.x, p.y, current_border_color);
         
@@ -222,6 +221,18 @@ bool try_expand_castle(Solution & solution, Castle castle, vector<vector<bool>>&
         }
         else {
             throw exception("imposible");
+        }
+
+        int size_castle_before_remove = solution.mask_area(castle_to_restore.x, castle_to_restore.y, nullptr, nullptr, false);
+
+        solution.tiles[p.x][p.y] = castle.size;
+
+        int size_castle_after_remove = solution.mask_area(castle_to_restore.x, castle_to_restore.y, nullptr, nullptr, false);
+
+        // avoid splitting the area i take teh item from 
+        if (size_castle_after_remove + 1 != size_castle_before_remove) {
+            solution.tiles[p.x][p.y] = current_border_color;
+            continue;
         }
 
         bool success = try_expand_castle(solution, castle_to_restore, protected_area, max_recursion - 1);
