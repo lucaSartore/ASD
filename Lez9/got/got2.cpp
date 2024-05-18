@@ -11,12 +11,13 @@
 #include <fstream>
 #include <climits>
 #include <algorithm>
+#include <cassert>
 using namespace std;
 
 template<typename T>
 ostream& operator<<(ostream &os, vector<vector<T>> & v){
-    for(int y=0; y<v[0].size; y++){
-        for(int x=0; x<v.size; x++){
+    for(size_t y=0; y<v[0].size(); y++){
+        for(size_t x=0; x<v.size(); x++){
             os << v[x][y] << " ";
 
         }
@@ -50,8 +51,9 @@ class Solution {
 public:
     vector<Castle> castles;
     vector<vector<int>> tiles;
-    vector<vector<bool>> mask;
+    vector<vector<int>> castles_map;
     vector<int> sizes;
+    vector<vector<bool>> mask;
     int size_x; // cols (M)
     int size_y; // rows (N)
 
@@ -59,6 +61,7 @@ public:
         fs >> size_y >> size_x;
 
         tiles = vector<vector<int>>(size_x, vector<int>(size_y, 0));
+        castles_map = vector<vector<int>>(size_x, vector<int>(size_y, 0));
         mask = vector<vector<bool>>(size_x, vector<bool>(size_y, false));
         castles = vector<Castle>();
         sizes = vector<int>();
@@ -69,6 +72,7 @@ public:
                 fs >> v;
                 if (v != 0) {
                     castles.emplace_back(x, y, v);
+                    castles_map[x][y] = v;
                     tiles[x][y] = v;
                 }
                 if (find(sizes.begin(), sizes.end(), v) == sizes.end()) {
@@ -78,9 +82,166 @@ public:
         }
     }
 
+   void reset_mask(){
+       for(int x=0; x<size_x; x++){
+           for(int y=0; y<size_y; y++){
+                mask[x][y] = false;
+           }
+       }
+   };
+
+   int get_tile(int x, int y) {
+       if(
+               x < 0 ||
+               y < 0 ||
+               x >= size_x ||
+               y >= size_y
+               ){
+           return -1;
+       }
+       return tiles[x][y];
+   }
+
+   int mask_area_r(int x, int y, int color, vector<Point>* border, vector<vector<bool>>* out_area, bool set_out_area_to){
+       if(
+               x < 0 ||
+               y < 0 ||
+               x >= size_x ||
+               y >= size_y
+               ){
+           return 0;
+       }
+
+      if(mask[x][y]){
+          return 0;
+      }
+      mask[x][y] = true;
+
+      if(tiles[x][y] != color) {
+          if (border != nullptr) {
+              border->emplace_back(x, y);
+          }
+          return 0;
+      }
+      else if (out_area != nullptr){
+          (*out_area)[x][y] = set_out_area_to;
+      }
+
+      return 1  + mask_area_r(x-1,y,color, border, out_area, set_out_area_to)
+                + mask_area_r(x+1,y,color, border, out_area, set_out_area_to)
+                + mask_area_r(x,y-1,color, border, out_area, set_out_area_to)
+                + mask_area_r(x,y+1,color, border, out_area, set_out_area_to);
+   }
+
+   int mask_area(int x, int y, vector<Point>* border, vector<vector<bool>>* out_area, bool set_out_area_to){
+       reset_mask();
+       int color = tiles[x][y];
+       return mask_area_r(x,y,color, border, out_area, set_out_area_to);
+   }
+
+
+   // remove the numbers that are been let outside without a castle
+   void clean() {
+       reset_mask();
+       auto to_keep = mask;
+       for (auto& castle : castles) {
+           // castle is already inclided... no need to include it again
+           if (to_keep[castle.x][castle.y]) {
+               continue;
+           }
+           mask_area(castle.x, castle.y, nullptr, &to_keep, true);
+       }
+
+       for (int x = 0; x < size_x; x++) {
+           for (int y = 0; y < size_y; y++) {
+               if (!to_keep[x][y]) {
+                   tiles[x][y] = 0;
+               }
+           }
+       }
+   }
 };
 
+bool try_shrink_castle() {
+    return false;
+}
 
+bool try_expand_castle(Solution & solution, Castle castle, vector<vector<bool>>& protected_area, int max_recursion) {
+    if (max_recursion == 0) {
+        return false;
+    }
+        
+    // second choice are points that are not one castle of another size
+    vector<Point>  choices = vector<Point>();
+
+    vector<Point> border = vector<Point>();
+    int area = solution.mask_area(castle.x, castle.y, &border, & protected_area, true);
+
+    // castle is already big enougf, no need to expand it
+    if (area >= castle.size) {
+        return true;
+    }
+
+    for (auto p : border) {
+        // i can't incorporate another castle that is not of my same color
+        int castle_in_border = solution.castles_map[p.x][p.y];
+        if (castle_in_border != 0 && castle_in_border != castle.size) {
+            continue;
+        }
+
+        // can't expand in a protected area (to avoid destroying our previous work to restore the current tile)
+        if (protected_area[p.x][p.y]) {
+            continue;
+        }
+
+        int current_border_color = solution.tiles[p.x][p.y];
+
+        assert(current_border_color != castle.size);
+
+        // prefer to expand where there the area already free
+        if (current_border_color == 0) {
+            solution.tiles[p.x][p.y] = castle.size;
+            return true;
+        }
+
+        solution.tiles[p.x][p.y] = castle.size;
+
+        Castle castle_to_restore = Castle(p.x, p.y, current_border_color);
+        
+        if (solution.get_tile(p.x + 1, p.y) == current_border_color) {
+            castle_to_restore.x += 1;
+        }
+        else if (solution.get_tile(p.x - 1, p.y) == current_border_color) {
+            castle_to_restore.x -= 1;
+        }
+        else if (solution.get_tile(p.x, p.y+1) == current_border_color) {
+            castle_to_restore.y += 1;
+        }
+        else if (solution.get_tile(p.x, p.y-1) == current_border_color) {
+            castle_to_restore.y -= 1;
+        }
+        else {
+            throw exception("imposible");
+        }
+
+        bool success = try_expand_castle(solution, castle_to_restore, protected_area, max_recursion - 1);
+
+        if (success) {
+            return true;
+        }
+
+        // if it didn't work i need to restore the solution before trying the next one
+        
+        solution.tiles[p.x][p.y] = current_border_color;
+    }
+
+    // if i am here it means that i couldn't increase the size of the current partition without destroying another one
+
+    // unprotect the current area
+    solution.mask_area(castle.x, castle.y, nullptr, & protected_area, false);
+    
+    return false;
+}
 
 int main(){
     ifstream input("input.txt");
@@ -88,6 +249,16 @@ int main(){
 
     Solution s = Solution(input);
 
+    while (true)
+    {
+        for (auto& castle : s.castles) {
+            s.reset_mask();
+            auto protected_area = s.mask;
+            try_expand_castle(s, castle, protected_area, 5);
+        }
+        s.clean();
+        cout << s.tiles << endl;
+    }
 
     output.close();
     input.close();
