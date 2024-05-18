@@ -2,17 +2,28 @@
 #include "got.h"
 #endif
 
-#define GENERATION_SIZE 200
+#define GENERATION_SIZE 100
 #define MAX_N_ATTEMPTS 70
 #define N_MUTATIONS 5
-#define MAX_TOTAL_REATTEMPT 30000000000
 
 #include <vector>
 #include <iostream>
 #include <fstream>
 #include <climits>
-#include <bits/stdc++.h>
+#include <algorithm>
 using namespace std;
+
+template<typename T>
+ostream& operator<<(ostream &os, vector<vector<T>> & v){
+    for(int y=0; y<v[0].size; y++){
+        for(int x=0; x<v.size; x++){
+            os << v[x][y] << " ";
+
+        }
+        os << endl;
+    }
+    return os;
+}
 
 class Castle{
 public:
@@ -108,6 +119,13 @@ public:
             return 0;
         }
         int n = mask_area(c.x, c.y);
+
+        for (auto castle : castles) {
+            if (castle.size != color && mask[castle.x][castle.y]) {
+                return 0;
+            }
+        }
+
         if(n == c.size) {
             return 1.0;
         }
@@ -172,6 +190,7 @@ public:
 
 
 
+
    void add_tile_mutation(){
        auto castle_to_mutate = castles[rand()%castles.size()];
        auto points = get_adj_tiles(castle_to_mutate);
@@ -222,19 +241,44 @@ public:
        }
    }
 
+   void or_with_mask(vector<vector<bool>>& output) {
+
+       for(int y=0; y<size_y; y++){
+           for (int x = 0; x < size_x; x++) {
+               if (mask[x][y]) {
+                   output[x][y] = true;
+               }
+           }
+       }
+   }
+
    void clean(){
 
+       reset_mask();
+
+       auto to_keep = mask;
+
        for(auto& castle: castles){
-           if(tiles[castle.x][castle.y] != castle.size){
-               continue;
-           }
            int area = mask_area(castle.x,castle.y);
            if(area != castle.size){
+               //cout << "mask out of size" << endl;
               mask_map();
+              continue;
+           }
+           //cout << "Or" << endl;
+           or_with_mask(to_keep);
+       }
+
+       for(int y=0; y<size_y; y++){
+           for (int x = 0; x < size_x; x++) {
+               if (to_keep[x][y] == false) {
+                   tiles[x][y] = 0;
+               }
            }
        }
    }
 };
+
 
 
 ostream& operator<<(ostream &os, Solution & s){
@@ -284,8 +328,7 @@ int find_solution(ofstream& of, Solution current_solution, float absolute_best){
         }
         absolute_best = max_score;
 
-
-
+        
         // num of closed cities
         print_solution(current_best,of);
         of << "***" << endl;
