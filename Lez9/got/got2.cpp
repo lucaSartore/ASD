@@ -102,6 +102,52 @@ public:
        return tiles[x][y];
    }
 
+   // return true if this component is ourside the considered area (and therefore the components adjacent to it are part of the border)
+   bool find_border_r(int x, int y, int color, vector<Point>& border) {
+       if(
+               x < 0 ||
+               y < 0 ||
+               x >= size_x ||
+               y >= size_y
+               ){
+           // the outside is by definiton a border
+           return true;
+       }
+       if (mask[x][y]) {
+           return false;
+       }
+
+       if (tiles[x][y] != color) {
+           return true;
+       }
+
+       mask[x][y] = true;
+
+       if (find_border_r(x - 1, y, color, border)) {
+           border.emplace_back(x, y);
+       }
+
+       if (find_border_r(x + 1, y, color, border)) {
+           border.emplace_back(x, y);
+       }
+
+       if (find_border_r(x, y + 1, color, border)) {
+           border.emplace_back(x, y);
+       }
+       if (find_border_r(x, y - 1, color, border)) {
+           border.emplace_back(x, y);
+       }  
+
+       return false;
+   }
+
+   vector<Point> find_border(int x, int y, int color) {
+       reset_mask();
+       vector<Point> border = vector<Point>();
+       find_border_r(x, y, color, border);
+       return border;
+   }
+
    int mask_area_r(int x, int y, int color, vector<Point>* border, vector<vector<bool>>* out_area, bool set_out_area_to){
        if(
                x < 0 ||
@@ -162,7 +208,33 @@ public:
    }
 };
 
-bool try_shrink_castle() {
+// try shrinking the current solution without dividing it in two
+bool try_shrink_castle(Solution & solution, Castle castle) {
+    int area_before_shrink = solution.mask_area(castle.x, castle.y, nullptr, nullptr, false);
+
+    // size is already perfect... no need to shrink!
+    if (area_before_shrink <= castle.size) {
+        return true;
+    }
+
+    auto points = solution.find_border(castle.x, castle.y, castle.size);
+
+    for (auto p : points) {
+        // can't remove a castle
+        if (solution.castles_map[p.x][p.y] != 0) {
+            continue;
+        }
+        solution.tiles[p.x][p.y] = 0;
+        int area_after_shrink = solution.mask_area(castle.x, castle.y, nullptr, nullptr, false);
+
+        // successfuly skrink without splitint the pieces
+        if (area_after_shrink + 1 == area_before_shrink) {
+            return true;
+        }
+
+        // restore
+        solution.tiles[p.x][p.y] = castle.size;
+    }
     return false;
 }
 
@@ -266,6 +338,7 @@ int main(){
             s.reset_mask();
             auto protected_area = s.mask;
             try_expand_castle(s, castle, protected_area, 5);
+            try_shrink_castle(s, castle);
         }
         s.clean();
         cout << s.tiles << endl;
