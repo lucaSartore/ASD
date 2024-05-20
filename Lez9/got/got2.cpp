@@ -12,10 +12,11 @@
 #include <climits>
 #include <algorithm>
 #include <cassert>
+#include <algorithm>
 using namespace std;
 
-template<typename T>
-ostream& operator<<(ostream &os, vector<vector<T>> & v){
+template<typename T, typename E>
+E & operator<<(E &os, vector<vector<T>> & v){
     for(size_t y=0; y<v[0].size(); y++){
         for(size_t x=0; x<v.size(); x++){
             os << v[x][y] << " ";
@@ -36,6 +37,10 @@ public:
         x = _x;
         y = _y;
         size = _size;
+    }
+
+    bool operator< (Castle const& other) const {
+        return size < other.size;
     }
 };
 
@@ -80,6 +85,8 @@ public:
                 }
             }
         }
+
+        sort(castles.begin(), castles.end());
     }
 
    void reset_mask(){
@@ -190,6 +197,8 @@ public:
    void clean() {
        reset_mask();
        auto to_keep = mask;
+
+       // remove the numbers that are left, but don't have a castle
        for (auto& castle : castles) {
            // castle is already inclided... no need to include it again
            if (to_keep[castle.x][castle.y]) {
@@ -197,6 +206,19 @@ public:
            }
            mask_area(castle.x, castle.y, nullptr, &to_keep, true);
        }
+
+       // remove the castle that has a size different from the obtimal one
+       for (auto& castle : castles) {
+           // castle is already inclided... no need to include it again
+           if (to_keep[castle.x][castle.y] == false) {
+               continue;
+           }
+           int area = mask_area(castle.x, castle.y, nullptr, nullptr, false);
+           if (area != castle.size) {
+                mask_area(castle.x, castle.y, nullptr, &to_keep, false);
+           }
+       }
+
 
        for (int x = 0; x < size_x; x++) {
            for (int y = 0; y < size_y; y++) {
@@ -208,13 +230,21 @@ public:
    }
 };
 
+
+
+enum Result{
+    SUCCESS,
+    UNSUCCESS,
+    NOTHING_TO_DO
+};
+
 // try shrinking the current solution without dividing it in two
-bool try_shrink_castle(Solution & solution, Castle castle) {
+Result try_shrink_castle(Solution & solution, Castle castle) {
     int area_before_shrink = solution.mask_area(castle.x, castle.y, nullptr, nullptr, false);
 
     // size is already perfect... no need to shrink!
     if (area_before_shrink <= castle.size) {
-        return true;
+        return NOTHING_TO_DO;
     }
 
     auto points = solution.find_border(castle.x, castle.y, castle.size);
@@ -229,20 +259,25 @@ bool try_shrink_castle(Solution & solution, Castle castle) {
 
         // successfuly skrink without splitint the pieces
         if (area_after_shrink + 1 == area_before_shrink) {
-            return true;
+            return SUCCESS;
         }
 
         // restore
         solution.tiles[p.x][p.y] = castle.size;
     }
-    return false;
+    return UNSUCCESS;
 }
 
-bool try_expand_castle(Solution & solution, Castle castle, vector<vector<bool>>& protected_area, int max_recursion) {
+Result try_expand_castle(Solution & solution, Castle castle, vector<vector<bool>>& protected_area, int max_recursion) {
     if (max_recursion == 0) {
-        return false;
+        return UNSUCCESS;
     }
-        
+    
+    if (solution.tiles[castle.x][castle.y] == 0) {
+        solution.tiles[castle.x][castle.y] = castle.size;
+        return SUCCESS;
+    }
+
     // second choice are points that are not one castle of another size
     vector<Point>  choices = vector<Point>();
 
@@ -251,7 +286,7 @@ bool try_expand_castle(Solution & solution, Castle castle, vector<vector<bool>>&
 
     // castle is already big enougf, no need to expand it
     if (area >= castle.size) {
-        return true;
+        return NOTHING_TO_DO;
     }
 
     for (auto p : border) {
@@ -273,7 +308,7 @@ bool try_expand_castle(Solution & solution, Castle castle, vector<vector<bool>>&
         // prefer to expand where there the area already free
         if (current_border_color == 0) {
             solution.tiles[p.x][p.y] = castle.size;
-            return true;
+            return SUCCESS;
         }
 
 
@@ -292,7 +327,8 @@ bool try_expand_castle(Solution & solution, Castle castle, vector<vector<bool>>&
             castle_to_restore.y -= 1;
         }
         else {
-            throw exception("imposible");
+            // impossible in theory
+            assert(false);
         }
 
         int size_castle_before_remove = solution.mask_area(castle_to_restore.x, castle_to_restore.y, nullptr, nullptr, false);
@@ -307,10 +343,10 @@ bool try_expand_castle(Solution & solution, Castle castle, vector<vector<bool>>&
             continue;
         }
 
-        bool success = try_expand_castle(solution, castle_to_restore, protected_area, max_recursion - 1);
+        Result result = try_expand_castle(solution, castle_to_restore, protected_area, max_recursion - 1);
 
-        if (success) {
-            return true;
+        if (result != UNSUCCESS) {
+            return SUCCESS;
         }
 
         // if it didn't work i need to restore the solution before trying the next one
@@ -323,7 +359,7 @@ bool try_expand_castle(Solution & solution, Castle castle, vector<vector<bool>>&
     // unprotect the current area
     solution.mask_area(castle.x, castle.y, nullptr, & protected_area, false);
     
-    return false;
+    return UNSUCCESS;
 }
 
 int main(){
@@ -332,17 +368,22 @@ int main(){
 
     Solution s = Solution(input);
 
-    while (true)
-    {
-        for (auto& castle : s.castles) {
+
+
+
+    for (auto& castle : s.castles) {
+        auto protected_area = s.mask;
+        do {
             s.reset_mask();
-            auto protected_area = s.mask;
-            try_expand_castle(s, castle, protected_area, 5);
-            try_shrink_castle(s, castle);
-        }
+            protected_area = s.mask;
+        } while (
+            try_expand_castle(s, castle, protected_area, 5) == SUCCESS ||
+            try_shrink_castle(s, castle) == SUCCESS
+            );
         s.clean();
-        cout << s.tiles << endl;
+        output << s.tiles << "***" << endl;
     }
+    
 
     output.close();
     input.close();
