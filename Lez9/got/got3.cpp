@@ -2,9 +2,9 @@
 #include "got.h"
 #endif
 
-#define GENERATION_SIZE 100
-#define MAX_N_ATTEMPTS 70
-#define N_MUTATIONS 5
+#define GENERATION_SIZE 150
+#define MAX_N_ATTEMPTS 1000
+#define N_MUTATIONS 1
 
 #include <vector>
 #include <iostream>
@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <cassert>
 #include <algorithm>
+#include <random>
 using namespace std;
 
 template<typename T, typename E>
@@ -59,6 +60,7 @@ public:
     static vector<vector<int>> castles_map;
     static vector<int> sizes;
     static vector<vector<bool>> mask;
+    static vector<Castle> castle_to_mutate;
     static int size_x; // cols (M)
     static int size_y; // rows (N)
 
@@ -192,6 +194,33 @@ public:
        return mask_area_r(x,y,color, border, out_area, set_out_area_to);
    }
 
+    float evaluate_single(Castle & c){
+        int color = tiles[c.x][c.y];
+        if(color != c.size){
+            return 0;
+        }
+        int n = mask_area(c.x, c.y, nullptr, nullptr, false);
+
+        if(n == c.size) {
+            return 1.0;
+        }
+
+        castle_to_mutate.push_back(c);
+
+        if(n < c.size){
+            return (float) n / (float) c.size /  7;
+        }
+        return 0;
+    }
+
+   float evaluate(){
+        castle_to_mutate = vector<Castle>();
+        float score = 0;
+        for(auto castle: castles){
+           score += evaluate_single(castle);
+        }
+        return score;
+   }
 
    // remove the numbers that are been let outside without a castle
    void clean() {
@@ -237,6 +266,8 @@ vector<Castle> Solution::castles = vector<Castle>();
 vector<vector<int>> Solution::castles_map = vector<vector<int>>();
 vector<int> Solution::sizes = vector<int>();
 vector<vector<bool>> Solution::mask = vector<vector<bool>>();
+vector<Castle> Solution::castle_to_mutate = vector<Castle>();
+
 int Solution::size_x = 0; // cols (M)
 int Solution::size_y = 0; // rows (N)
 
@@ -256,6 +287,8 @@ Result try_shrink_castle(Solution & solution, Castle castle) {
     }
 
     auto points = solution.find_border(castle.x, castle.y, castle.size);
+
+    shuffle(points.begin(),points.end(),std::default_random_engine(0));
 
     for (auto p : points) {
         // can't remove a castle
@@ -336,6 +369,7 @@ Result try_expand_castle(Solution & solution, Castle castle, vector<vector<bool>
         }
         else {
             // impossible in theory
+            return UNSUCCESS;
             assert(false);
         }
 
@@ -370,24 +404,157 @@ Result try_expand_castle(Solution & solution, Castle castle, vector<vector<bool>
     return UNSUCCESS;
 }
 
+Result try_expand_castle_non_recursive(Solution &solution, Castle castle){
+    auto m = vector<vector<bool>>(Solution::size_x,vector<bool>(Solution::size_y, false));
+    return try_expand_castle(solution,castle,m,3);
+}
+
+// expand the castle without warring about the destruction of other castles
+Result expand_castle(Solution & solution, Castle castle) {
+    if (solution.tiles[castle.x][castle.y] == 0) {
+        solution.tiles[castle.x][castle.y] = castle.size;
+        return SUCCESS;
+    }
+
+    // second choice are points that are not one castle of another size
+    vector<Point>  first_choices = vector<Point>();
+    vector<Point>  second_choices = vector<Point>();
+
+    vector<Point> border = vector<Point>();
+    int area = solution.mask_area(castle.x, castle.y, &border, nullptr, true);
+
+    // castle is already big enougf, no need to expand it
+    if (area >= castle.size) {
+        return NOTHING_TO_DO;
+    }
+
+    for (auto p : border) {
+        // i can't incorporate another castle that is not of my same color
+        int castle_in_border = Solution::castles_map[p.x][p.y];
+        if (castle_in_border != 0 && castle_in_border != castle.size) {
+            continue;
+        }
+
+        int current_border_color = solution.tiles[p.x][p.y];
+
+        assert(current_border_color != castle.size);
+
+        if (current_border_color == 0) {
+            first_choices.push_back(p);
+        }else{
+            second_choices.push_back(p);
+        }
+    }
+
+    if(!first_choices.empty()){
+        int n = rand()%first_choices.size();
+        auto p = first_choices[n];
+        solution.tiles[p.x][p.y] = castle.size;
+        return SUCCESS;
+    }
+    if(!second_choices.empty()){
+        int n = rand()%second_choices.size();
+        auto p = second_choices[n];
+        solution.tiles[p.x][p.y] = castle.size;
+        return SUCCESS;
+    }
+    return UNSUCCESS;
+}
+
+// shrink the castle size, even if it need to be devided by two
+Result shrink_castle(Solution & solution, Castle castle) {
+    int area_before_shrink = solution.mask_area(castle.x, castle.y, nullptr, nullptr, false);
+
+    // size is already perfect... no need to shrink!
+    if (area_before_shrink <= castle.size) {
+        return NOTHING_TO_DO;
+    }
+
+    auto points = solution.find_border(castle.x, castle.y, castle.size);
+
+    if(points.size() <= 1){
+        return UNSUCCESS;
+    }
+
+    auto p = points[rand()%points.size()];
+    solution.tiles[p.x][p.y] = 0;
+    return  SUCCESS;
+}
+
+void mutate(Solution& solution){
+
+    if(Solution::castle_to_mutate.size() == 0){
+        return;
+    }
+
+    auto castle = solution.castle_to_mutate[rand()%solution.castle_to_mutate.size()];
+
+
+    int v = rand()%100;
+    if(v < 30){
+        try_expand_castle_non_recursive(solution,castle);
+    }else if (v < 60){
+        try_shrink_castle(solution,castle);
+    }else if (v < 75){
+        shrink_castle(solution,castle);
+    }else{
+        expand_castle(solution,castle);
+    }
+}
+
+int find_solution(ofstream& of, Solution current_solution, float absolute_best){
+    Solution current_best = current_solution;
+    float max_score = 0;
+    int n_attempts = 0;
+    while (n_attempts<MAX_N_ATTEMPTS){
+        bool has_improve = false;
+        //cout << "Original:" << endl << current_best << ends;
+        for(int i=0; i<GENERATION_SIZE; i++){
+            Solution to_mutate = current_best;
+            for(int j=0; j<N_MUTATIONS; j++){
+                mutate(to_mutate);
+            }
+            //cout << "Mutated:" << endl << to_mutate<< endl;
+            float score = to_mutate.evaluate();
+            //cout << "Score: " << score << endl;
+            if(score > max_score){
+                has_improve = true;
+                max_score = score;
+                current_best = to_mutate;
+            }
+        }
+        if(!has_improve){
+            n_attempts++;
+            continue;
+        }
+        n_attempts = 0;
+
+        if(max_score <= absolute_best){
+            continue;
+        }
+        absolute_best = max_score;
+
+
+        // num of closed cities
+        auto to_print = current_best;
+        //to_print.clean();
+        of << to_print.tiles;
+        of << "***" << endl;
+    }
+    return absolute_best;
+}
+
 int main(){
     ifstream input("input.txt");
+
     ofstream output("output.txt");
 
     Solution s = Solution(input);
-    for (auto& castle : Solution::castles) {
-        auto protected_area = Solution::mask;
-        do {
-            s.reset_mask();
-            protected_area = Solution::mask;
-        } while (try_expand_castle(s, castle, protected_area, 3) == SUCCESS);
-        while(try_shrink_castle(s, castle) == SUCCESS);
-        s.clean();
-        output << s.tiles << "***" << endl;
-    }
-    
+
+    find_solution(output,s,0);
 
     output.close();
     input.close();
     return 0;
+
 }
