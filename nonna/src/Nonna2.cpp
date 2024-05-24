@@ -15,7 +15,7 @@ public:
 	int position;
 	int id;
 	vector<int> gomitoli;
-	float average;
+	float ordering;
 
 	explicit Centrino(int _id) {
 		position = _id;
@@ -27,16 +27,30 @@ public:
 		gomitoli.push_back(gomitolo);
 	}
 
+	void calculate_median() {
+		int size = gomitoli.size();
+		if (size == 0){
+			ordering = 0;
+		}
+		else if (size % 2 == 0) {
+			ordering = (gomitoli[size / 2] + gomitoli[size / 2 - 1]) / 2.0;
+		}
+		else {
+			ordering = gomitoli[size / 2];
+		}
+	}
+
 	void calculate_average() {
+
 		int sum = 0;
 		for(int e: gomitoli){
 			sum += e;
 		}
-		average = ((float)sum) / gomitoli.size();
+		ordering = ((float)sum) / gomitoli.size();
 	}
 
 	bool operator<(Centrino& other) {
-		return average < other.average;
+		return ordering < other.ordering ;
 	}
 };
 
@@ -99,6 +113,10 @@ public:
 			centrini[centrino].add_gomitolo(gomitolo);
 			lines.emplace_back(centrino, gomitolo);
 		}
+
+		for (int i = 0; i < num_centrini; i++) {
+			sort(centrini[i].gomitoli.begin(), centrini[i].gomitoli.end());
+		}
 	}
 
 	// retore internal references/logic afere notes have been move
@@ -130,10 +148,17 @@ public:
 		this->crossing = counter;
 	}
 
-	void greedy_ordering() {
-		
-		for (auto& c : centrini) {
-			c.calculate_average();
+	void greedy_ordering(bool use_median = false) {
+	
+		if (use_median) {
+			for (auto& c : centrini) {
+				c.calculate_median();
+			}
+		}
+		else {
+			for (auto& c : centrini) {
+				c.calculate_average();
+			}
 		}
 
 		sort(centrini.begin(), centrini.end());
@@ -178,7 +203,7 @@ int main() {
 	Line::solution = &solution;
 
 	solution.calculate_crossing();
-	int crossing_old = solution.crossing;
+	int current_best = solution.crossing;
 
 
 	output << solution;
@@ -186,7 +211,17 @@ int main() {
 	solution.greedy_ordering();
 	solution.calculate_crossing();
 
-	if (solution.crossing < crossing_old) {
+	if (solution.crossing < current_best) {
+		current_best = solution.crossing;
+		output << solution;
+	}
+
+	
+	solution.greedy_ordering(true);
+	solution.calculate_crossing();
+
+	if (solution.crossing < current_best) {
+		current_best = solution.crossing;
 		output << solution;
 	}
 
