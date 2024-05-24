@@ -1,0 +1,13 @@
+
+cmake_minimum_required(VERSION 3.23)
+project(Nonna)
+
+configure_file(./dataset/input0.txt input.txt COPYONLY)
+
+add_compile_definitions(LOCAL)
+
+set(CMAKE_BUILD_TYPE Debug)
+
+set(CMAKE_CXX_STANDARD 11)
+
+add_executable(Nonna1 src/main1.cpp)
