@@ -3,7 +3,11 @@
 #include <vector>
 #include <tuple>
 #include <algorithm>
+
+
+#ifndef LOCAL 
 #include "nonna.h"
+#endif // !LOCAL 
 
 using namespace std;
 
@@ -30,6 +34,7 @@ int main() {
             if(get<1>(lines[previous]) > c_dest) {counter++;}
         }
     }
+
     out << counter << endl;
     for(unsigned c=0; c<C; c++) {out << c << " ";}
     out << endl << "***" << endl;
