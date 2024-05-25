@@ -53,7 +53,7 @@ public:
 		ordering = average;
 	}
 	
-	// Calculate the variance of all the gomitoli connected to this centrino
+	// calculate the variance of all the gomitoli connected to this centrino
 	void calculate_variance() {
 		float sum = 0;
 		for(int e: gomitoli){
