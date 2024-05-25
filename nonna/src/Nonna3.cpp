@@ -198,6 +198,17 @@ public:
 
 		return random_intervals;
 	}
+
+	// return a list of continuous intervals with the highest variance in them (ordered from worse to best)
+	// the list is returned when the next worse interval intersects an already added interval
+	void get_worse_intervals() {
+		std::vector<std::pair<int, int>> worse_intervals;
+    	pairs.reserve(num_centrini);
+		
+		// TODO: actually implement this, this algorithm was explained during the course
+
+		return worse_intervals;
+	}
 };
 
 
