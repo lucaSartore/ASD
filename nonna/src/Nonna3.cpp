@@ -179,6 +179,25 @@ public:
 		restore();
 	}
 
+	// return a list of random continuous intervals
+	// the list is returned when the next random interval intersects an already added interval
+	// TODO: make this optionally take in a minimum and maximum value, also try making the interval lenght an exponential function to make long ones rarer
+	void get_random_intervals() {
+		std::vector<std::pair<int, int>> random_intervals;
+    	pairs.reserve(num_centrini);
+		
+		// seed the pseudo random number generator
+		std::srand(static_cast<unsigned int>(std::time(nullptr)));
+
+		for (int i = 0; i < num_centrini; ++i) {
+			int start_index = std::rand() % (num_centrini + 1);
+			int end_index = std::rand() % (num_centrini + 1);
+
+			pairs.emplace_back(start_index, end_index);
+		}
+
+		return random_intervals;
+	}
 };
 
 
