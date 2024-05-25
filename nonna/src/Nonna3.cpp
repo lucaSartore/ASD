@@ -18,7 +18,7 @@ public:
 	vector<int> gomitoli;
 	float ordering;
 	int average;
-	int variance;
+	int variance;  // this is useful to know as a high variance means that it's more complex to correctly find the optimal placement for this centrino
 
 	explicit Centrino(int _id) {
 		position = _id;
