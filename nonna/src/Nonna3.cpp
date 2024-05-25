@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <iostream>
 #include <numeric>
+#include <cmath>
 
 using namespace std;
 
@@ -16,6 +17,8 @@ public:
 	int id;
 	vector<int> gomitoli;
 	float ordering;
+	int average;
+	int variance;
 
 	explicit Centrino(int _id) {
 		position = _id;
@@ -46,7 +49,17 @@ public:
 		for(int e: gomitoli){
 			sum += e;
 		}
-		ordering = ((float)sum) / gomitoli.size();
+		average = ((float)sum) / gomitoli.size();
+		ordering = average;
+	}
+	
+	// Calculate the variance of all the gomitoli connected to this centrino
+	void calculate_variance() {
+		float sum = 0;
+		for(int e: gomitoli){
+			sum += pow(e - average, 2);
+		}
+		variance = sum / gomitoli.size();
 	}
 
 	bool operator<(Centrino& other) {
