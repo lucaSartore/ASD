@@ -8,6 +8,7 @@
 #include <iostream>
 #include <numeric>
 #include <cmath>
+#include <set>
 
 using namespace std;
 
@@ -102,6 +103,7 @@ ostream& operator<<(ostream& os, Line& line) {
 
 class Solution {
 public:
+	vector<vector<unsigned>> couple_crossings;
 	vector<Centrino> centrini;
 	vector<int> id_to_position;
 	vector<Line> lines;
@@ -130,6 +132,15 @@ public:
 		for (int i = 0; i < num_centrini; i++) {
 			sort(centrini[i].gomitoli.begin(), centrini[i].gomitoli.end());
 		}
+		
+		vector<unsigned> tmp;
+        	tmp.resize(num_centrini);
+        	couple_crossings.resize(num_centrini, tmp);
+        	for(unsigned c1=0; c1<num_centrini; c1++) {
+            		for(unsigned c2=0; c2<num_centrini; c2++) {
+                		couple_crossings[c1][c2] = calculate_couple_crossings(&centrini[c1], &centrini[c2]);
+            		}
+        	}
 	}
 
 	// retore internal references/logic afere notes have been move
@@ -140,24 +151,28 @@ public:
 		}
 	}
 
+	unsigned calculate_couple_crossings(Centrino *c1, Centrino *c2) {
+        	if(c1->id == c2->id) {return 0;}
+        	unsigned counter = 0;
+        	for(auto g2=c2->gomitoli.begin(); g2!=c2->gomitoli.end(); g2++) {
+            		for(auto g1=c1->gomitoli.begin(); g1!=c1->gomitoli.end(); g1++) {
+                		counter += (*g2 < *g1)? 1 : 0;
+            		}
+        	}
+        	return counter;
+    	}
+
 	void calculate_crossing() {
-
-	    sort(lines.begin(), lines.end());
-
-		//for (auto& l : lines) {cout << l.get_centrino()->position << ") " << l.get_centrino()->id << " - " << l.gomitolo << endl;}
-
-
 		unsigned counter = 0;
-
-		for(unsigned current=1; current<num_lines; current++) {
-			unsigned c_dest = lines[current].gomitolo;
-			for(int previous=current-1; previous>=0; previous--) {
-				if(lines[previous].gomitolo > c_dest) {
-					counter++;
+		set<unsigned> encountered;
+		for(unsigned i=0; i<this->couple_crossings.size(); i++) {
+			encountered.insert(this->centrini[i].id);
+			for(unsigned j=0; j<this->couple_crossings.size(); j++) {
+				if(encountered.find(j) == encountered.end()) {
+					counter += this->couple_crossings[this->centrini[i].id][j];
 				}
 			}
 		}
-	
 		this->crossing = counter;
 	}
 
