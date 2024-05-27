@@ -12,3 +12,4 @@ set(CMAKE_CXX_STANDARD 11)
 
 add_executable(Nonna1 "src/Nonna.cpp")
 add_executable(Nonna2 src/Nonna2.cpp)
+add_executable(Nonna3 src/Nonna3.cpp)

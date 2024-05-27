@@ -19,6 +19,8 @@ public:
 	vector<int> gomitoli;
 	float ordering;
 	int average;
+    vector<int> go_after;
+    vector<int> go_before;
 	int variance;  // this is useful to know as a high variance means that it's more complex to correctly find the optimal placement for this centrino
 
 	explicit Centrino(int _id) {
@@ -103,97 +105,98 @@ ostream& operator<<(ostream& os, Line& line) {
 
 class Solution {
 public:
-	vector<vector<unsigned>> couple_crossings;
-	vector<Centrino> centrini;
-	vector<int> id_to_position;
-	vector<Line> lines;
-	int num_centrini;
-	int num_gomitoli;
-	int num_lines;
-	int crossing;
+    vector<vector<unsigned>> couple_crossings;
+    vector<Centrino> centrini;
+    vector<int> id_to_position;
+    vector<Line> lines;
+    int num_centrini;
+    int num_gomitoli;
+    int num_lines;
+    int crossing;
 
 
+    explicit Solution(ifstream &fs) {
+        fs >> num_centrini >> num_gomitoli >> num_lines;
 
-	explicit Solution(ifstream &fs) {
-		fs >> num_centrini >> num_gomitoli >> num_lines;
+        for (int i = 0; i < num_centrini; i++) {
+            centrini.emplace_back(i);
+            id_to_position.push_back(i);
+        }
 
-		for (int i = 0; i < num_centrini; i++) {
-			centrini.emplace_back(i);
-			id_to_position.push_back(i);
-		}
+        for (int i = 0; i < num_lines; i++) {
+            int gomitolo, centrino;
+            fs >> centrino >> gomitolo;
+            centrini[centrino].add_gomitolo(gomitolo);
+            lines.emplace_back(centrino, gomitolo);
+        }
 
-		for (int i = 0; i < num_lines; i++) {
-			int gomitolo, centrino;
-			fs >> centrino >> gomitolo;
-			centrini[centrino].add_gomitolo(gomitolo);
-			lines.emplace_back(centrino, gomitolo);
-		}
+        for (int i = 0; i < num_centrini; i++) {
+            sort(centrini[i].gomitoli.begin(), centrini[i].gomitoli.end());
+        }
 
-		for (int i = 0; i < num_centrini; i++) {
-			sort(centrini[i].gomitoli.begin(), centrini[i].gomitoli.end());
-		}
-		
-		vector<unsigned> tmp;
-        	tmp.resize(num_centrini);
-        	couple_crossings.resize(num_centrini, tmp);
-        	for(unsigned c1=0; c1<num_centrini; c1++) {
-            		for(unsigned c2=0; c2<num_centrini; c2++) {
-                		couple_crossings[c1][c2] = calculate_couple_crossings(&centrini[c1], &centrini[c2]);
-            		}
-        	}
-	}
+        vector<unsigned> tmp;
+        tmp.resize(num_centrini);
+        couple_crossings.resize(num_centrini, tmp);
+        for (unsigned c1 = 0; c1 < num_centrini; c1++) {
+            for (unsigned c2 = 0; c2 < num_centrini; c2++) {
+                couple_crossings[c1][c2] = calculate_couple_crossings(&centrini[c1], &centrini[c2]);
+            }
+        }
+    }
 
-	// retore internal references/logic afere notes have been move
-	void restore() {
-		for (int i = 0; i < num_centrini; i++) {
-			centrini[i].position = i;
-			id_to_position[centrini[i].id] = i;
-		}
-	}
+    // retore internal references/logic afere notes have been move
+    void restore() {
+        for (int i = 0; i < num_centrini; i++) {
+            centrini[i].position = i;
+            id_to_position[centrini[i].id] = i;
+        }
+    }
 
-	unsigned calculate_couple_crossings(Centrino *c1, Centrino *c2) {
-        	if(c1->id == c2->id) {return 0;}
-        	unsigned counter = 0;
-        	for(auto g2=c2->gomitoli.begin(); g2!=c2->gomitoli.end(); g2++) {
-            		for(auto g1=c1->gomitoli.begin(); g1!=c1->gomitoli.end(); g1++) {
-                		counter += (*g2 < *g1)? 1 : 0;
-            		}
-        	}
-        	return counter;
-    	}
+    unsigned calculate_couple_crossings(Centrino *c1, Centrino *c2) {
+        if (c1->id == c2->id) { return 0; }
+        unsigned counter = 0;
+        for (auto g2 = c2->gomitoli.begin(); g2 != c2->gomitoli.end(); g2++) {
+            for (auto g1 = c1->gomitoli.begin(); g1 != c1->gomitoli.end(); g1++) {
+                counter += (*g2 < *g1) ? 1 : 0;
+            }
+        }
+        return counter;
+    }
 
-	void calculate_crossing() {
-		unsigned counter = 0;
-		set<unsigned> encountered;
-		for(unsigned i=0; i<this->couple_crossings.size(); i++) {
-			encountered.insert(this->centrini[i].id);
-			for(unsigned j=0; j<this->couple_crossings.size(); j++) {
-				if(encountered.find(j) == encountered.end()) {
-					counter += this->couple_crossings[this->centrini[i].id][j];
-				}
-			}
-		}
-		this->crossing = counter;
-	}
+    void calculate_crossing() {
+        unsigned counter = 0;
+        set<unsigned> encountered;
+        for (unsigned i = 0; i < this->couple_crossings.size(); i++) {
+            encountered.insert(this->centrini[i].id);
+            for (unsigned j = 0; j < this->couple_crossings.size(); j++) {
+                // why using a set here when you could start j from i+1 and with some minor other edits avoid
+                // also nothe that a set is not an hash set (that is called unordered_set) and the cost of insertions
+                // and deletion is not O(1) bur is O(log(n))
+                if (encountered.find(j) == encountered.end()) {
+                    counter += this->couple_crossings[this->centrini[i].id][j];
+                }
+            }
+        }
+        this->crossing = counter;
+    }
 
-	void greedy_ordering(bool use_median = false) {
-	
-		if (use_median) {
-			for (auto& c : centrini) {
-				c.calculate_median();
-			}
-		}
-		else {
-			for (auto& c : centrini) {
-				c.calculate_average();
-			}
-		}
+    void greedy_ordering(bool use_median = false) {
 
-		sort(centrini.begin(), centrini.end());
+        if (use_median) {
+            for (auto &c: centrini) {
+                c.calculate_median();
+            }
+        } else {
+            for (auto &c: centrini) {
+                c.calculate_average();
+            }
+        }
 
-		restore();
-	}
+        sort(centrini.begin(), centrini.end());
 
+        restore();
+    }
+/*
 	// return a list of random continuous intervals
 	// the list is returned when the next random interval intersects an already added interval
 	// TODO: make this optionally take in a minimum and maximum value, also try making the interval lenght an exponential function to make long ones rarer
@@ -224,6 +227,24 @@ public:
 
 		return worse_intervals;
 	}
+    */
+
+    // reorder: begin included, end excluded
+    bool topological_order(int begin, int end){
+
+        // reset the vectors
+        for(int i=begin; i<end; i++){
+            centrini[i].go_after = vector<int>();
+            centrini[i].go_before= vector<int>();
+        }
+
+        for(int i=begin; i<end; i++) {
+            for (int j = begin; j < begin; j++) {
+                if( couple_crossings[i][j])
+            }
+        }
+    }
+
 };
 
 
