@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.23)
 project(Nonna)
 
-configure_file(./dataset/input0.txt input.txt COPYONLY)
+configure_file(./dataset/input9.txt input.txt COPYONLY)
 
 add_compile_definitions(LOCAL)
 
