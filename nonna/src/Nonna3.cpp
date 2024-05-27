@@ -229,13 +229,12 @@ public:
 
         restore();
     }
-/*
 	// return a list of random continuous intervals
 	// the list is returned when the next random interval intersects an already added interval
 	// TODO: make this optionally take in a minimum and maximum value, also try making the interval lenght an exponential function to make long ones rarer
-	void get_random_intervals() {
+	vector<pair<int,int>> get_random_intervals() {
 		std::vector<std::pair<int, int>> random_intervals;
-    	pairs.reserve(num_centrini);
+    	random_intervals.reserve(num_centrini);
 		
 		// seed the pseudo random number generator
 		std::srand(static_cast<unsigned int>(std::time(nullptr)));
@@ -244,7 +243,7 @@ public:
 			int start_index = std::rand() % (num_centrini + 1);
 			int end_index = std::rand() % (num_centrini + 1);
 
-			pairs.emplace_back(start_index, end_index);
+			random_intervals.emplace_back(start_index, end_index);
 		}
 
 		return random_intervals;
@@ -252,15 +251,14 @@ public:
 
 	// return a list of continuous intervals with the highest variance in them (ordered from worse to best)
 	// the list is returned when the next worse interval intersects an already added interval
-	void get_worse_intervals() {
+	std::vector<std::pair<int, int>> get_worse_intervals() {
 		std::vector<std::pair<int, int>> worse_intervals;
-    	pairs.reserve(num_centrini);
+    	worse_intervals.reserve(num_centrini);
 		
 		// TODO: actually implement this, this algorithm was explained during the course
 
 		return worse_intervals;
 	}
-    */
 
     // reorder: begin included, end excluded
     bool topological_order(int begin, int end){
