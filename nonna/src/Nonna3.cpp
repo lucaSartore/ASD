@@ -263,6 +263,9 @@ public:
     // reorder: begin included, end excluded
     bool topological_order(int begin, int end){
 
+
+		end = min(end, num_centrini);
+
         // reset the vectors
         for(int i=begin; i<end; i++){
             centrini[i].go_after = vector<int>();
@@ -363,13 +366,7 @@ int main() {
 
 	solution.calculate_crossing();
 	int current_best = solution.crossing;
-
-
-	solution.topological_order(0, solution.num_centrini);
-	output << solution;
-	cout << solution;
-	return 0;
-
+	int original_best = current_best;
 
 	output << solution;
 
@@ -388,6 +385,23 @@ int main() {
 	if (solution.crossing < current_best) {
 		current_best = solution.crossing;
 		output << solution;
+	}
+	else {
+		solution.greedy_ordering();
+		solution.calculate_crossing();
+	}
+
+	if (current_best == original_best) {
+		return 0;
+	}
+
+	{
+		int start = rand() % solution.num_centrini;
+		int end = start + rand() % 15;
+		bool has_improve = solution.topological_order(start, end);
+		if (has_improve) {
+			output << solution;
+		}
 	}
 
 	return 0;
