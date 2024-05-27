@@ -1,6 +1,6 @@
-#ifndef LOCAL 
+#ifndef LOCAL
 #include "nonna.h"
-#endif // !LOCAL 
+#endif // !LOCAL
 
 #include <vector>
 #include <fstream>
@@ -9,66 +9,67 @@
 #include <numeric>
 #include <cmath>
 #include <set>
+#include <climits>
 #include <cassert>
 
 using namespace std;
 
 class Centrino {
 public:
-	int position;
-	int id;
-	vector<int> gomitoli;
-	float ordering;
-	int average;
+    int position;
+    int id;
+    vector<int> gomitoli;
+    float ordering;
+    int average;
     vector<int> go_after;
     vector<int> go_before;
-	int variance;  // this is useful to know as a high variance means that it's more complex to correctly find the optimal placement for this centrino
+    int variance;  // this is useful to know as a high variance means that it's more complex to correctly find the optimal placement for this centrino
 
-	explicit Centrino(int _id) {
-		position = _id;
-		id = _id;
-		gomitoli = vector<int>();
-	}
+    explicit Centrino(int _id) {
+        position = _id;
+        id = _id;
+        gomitoli = vector<int>();
+    }
 
-	void add_gomitolo(int gomitolo) {
-		gomitoli.push_back(gomitolo);
-	}
+    void add_gomitolo(int gomitolo) {
+        gomitoli.push_back(gomitolo);
+    }
 
-	void calculate_median() {
-		int size = gomitoli.size();
-		if (size == 0){
-			ordering = 0;
-		}
-		else if (size % 2 == 0) {
-			ordering = (gomitoli[size / 2] + gomitoli[size / 2 - 1]) / 2.0;
-		}
-		else {
-			ordering = gomitoli[size / 2];
-		}
-	}
+    void calculate_median() {
+        int size = gomitoli.size();
+        if (size == 0){
+            ordering = 0;
+        }
+        else if (size % 2 == 0) {
+            ordering = (gomitoli[size / 2] + gomitoli[size / 2 - 1]) / 2.0;
+        }
+        else {
+            ordering = gomitoli[size / 2];
+        }
+    }
 
-	void calculate_average() {
+    void calculate_average() {
 
-		int sum = 0;
-		for(int e: gomitoli){
-			sum += e;
-		}
-		average = ((float)sum) / gomitoli.size();
-		ordering = average;
-	}
-	
-	// calculate the variance of all the gomitoli connected to this centrino
-	void calculate_variance() {
-		float sum = 0;
-		for(int e: gomitoli){
-			sum += pow(e - average, 2);
-		}
-		variance = sum / gomitoli.size();
-	}
+        int sum = 0;
+        for(int e: gomitoli){
+            sum += e;
+        }
+        average = ((float)sum) / gomitoli.size();
+        ordering = average;
+    }
 
-	bool operator<(Centrino& other) {
-		return ordering < other.ordering ;
-	}
+    // calculate the variance of all the gomitoli connected to this centrino
+    void calculate_variance() {
+        float sum = 0;
+        for(int e: gomitoli){
+            sum += pow(e - average, 2);
+        }
+        variance = sum / gomitoli.size();
+    }
+
+    bool operator<(Centrino& other) {
+        return ordering < other.ordering ;
+    }
 };
 
 class Line;
@@ -77,31 +78,31 @@ class Solution;
 
 class Line {
 public:
-	static Solution* solution;
-	int centrino;
-	int gomitolo;
+    static Solution* solution;
+    int centrino;
+    int gomitolo;
 
-	Line(int _centrino, int _gomitolo) {
-		centrino = _centrino;
-		gomitolo = _gomitolo;
-	}
+    Line(int _centrino, int _gomitolo) {
+        centrino = _centrino;
+        gomitolo = _gomitolo;
+    }
 
-	inline Centrino* get_centrino() const;
+    inline Centrino* get_centrino() const;
 
-	bool operator< (Line& other) {
+    bool operator< (Line& other) {
 
-		if (this->get_centrino()->position != other.get_centrino()->position) {
-			return this->get_centrino()->position < other.get_centrino()->position;
-		}
-		return this->gomitolo < other.gomitolo;
-	}
+        if (this->get_centrino()->position != other.get_centrino()->position) {
+            return this->get_centrino()->position < other.get_centrino()->position;
+        }
+        return this->gomitolo < other.gomitolo;
+    }
 };
 
 Solution* Line::solution = nullptr;
 
 ostream& operator<<(ostream& os, Line& line) {
-	os << line.get_centrino()->id << " - " << line.gomitolo;
-	return os;
+    os << line.get_centrino()->id << " - " << line.gomitolo;
+    return os;
 }
 
 class Solution {
@@ -153,36 +154,23 @@ public:
         }
     }
 
-	void swapp(int i, int j) {
-		if (i == j) {
-			return;
-		}
-		int id_i = this->centrini[i].id;
-		int id_j = this->centrini[j].id;
+    void swapp(int i, int j) {
+        if (i == j) {
+            return;
+        }
+        int id_i = this->centrini[i].id;
+        int id_j = this->centrini[j].id;
 
-		int cost_i_before_j = couple_crossings[id_i][id_j];
-		int cost_j_before_i = couple_crossings[id_j][id_i];
+        auto tmp = centrini[i];
+        centrini[i] = centrini[j];
+        centrini[j] = tmp;
 
-		int saved_crossings;
-		if (i > j) {
-			saved_crossings = - cost_i_before_j + cost_j_before_i;
-		}
-		else {
-			saved_crossings = + cost_i_before_j - cost_j_before_i;
-		}
-		assert(saved_crossings >= 0);
-		this->crossing -= saved_crossings;
+        centrini[i].position = i;
+        centrini[j].position = j;
 
-		auto tmp = centrini[i];
-		centrini[i] = centrini[j];
-		centrini[j] = tmp;
-
-		centrini[i].position = i;
-		centrini[j].position = j;
-
-		id_to_position[centrini[i].id] = i;
-		id_to_position[centrini[j].id] = j;
-	}
+        id_to_position[centrini[i].id] = i;
+        id_to_position[centrini[j].id] = j;
+    }
 
     unsigned calculate_couple_crossings(Centrino *c1, Centrino *c2) {
         if (c1->id == c2->id) { return 0; }
@@ -195,7 +183,26 @@ public:
         return counter;
     }
 
+
+    int crossings_in_range(int start , int end){
+        int counter = 0;
+        if(start == end){
+            return 0;
+        }
+        for(int i=start; i<end; i++){
+            for(int j=i+1; j<end; j++){
+                int id_i = centrini[i].id;
+                int id_j = centrini[j].id;
+                int to_add = couple_crossings[id_i][id_j];
+                counter += to_add;
+            }
+        }
+        return counter;
+    }
+
     void calculate_crossing() {
+        this->crossing = crossings_in_range(0,num_centrini);
+        return;
         unsigned counter = 0;
         set<unsigned> encountered;
         for (unsigned i = 0; i < this->couple_crossings.size(); i++) {
@@ -229,42 +236,49 @@ public:
 
         restore();
     }
-	// return a list of random continuous intervals
-	// the list is returned when the next random interval intersects an already added interval
-	// TODO: make this optionally take in a minimum and maximum value, also try making the interval lenght an exponential function to make long ones rarer
-	vector<pair<int,int>> get_random_intervals() {
-		std::vector<std::pair<int, int>> random_intervals;
-    	random_intervals.reserve(num_centrini);
-		
-		// seed the pseudo random number generator
-		srand(static_cast<unsigned int>(time(nullptr)));
+    // return a list of random continuous intervals
+    // the list is returned when the next random interval intersects an already added interval
+    // TODO: make this optionally take in a minimum and maximum value, also try making the interval lenght an exponential function to make long ones rarer
+    vector<pair<int,int>> get_random_intervals() {
+        std::vector<std::pair<int, int>> random_intervals;
+        random_intervals.reserve(num_centrini);
 
-		for (int i = 0; i < num_centrini; ++i) {
-			int start_index = rand() % (num_centrini + 1);
-			int end_index = rand() % (num_centrini + 1);
+        // seed the pseudo random number generator
+        srand(static_cast<unsigned int>(time(nullptr)));
 
-			random_intervals.emplace_back(start_index, end_index);
-		}
+        for (int i = 0; i < num_centrini; ++i) {
+            int start_index = rand() % (num_centrini + 1);
+            int end_index = rand() % (num_centrini + 1);
 
-		return random_intervals;
-	}
+            random_intervals.emplace_back(start_index, end_index);
+        }
 
-	// return a list of continuous intervals with the highest variance in them (ordered from worse to best)
-	// the list is returned when the next worse interval intersects an already added interval
-	std::vector<std::pair<int, int>> get_worse_intervals() {
-		std::vector<std::pair<int, int>> worse_intervals;
-    	worse_intervals.reserve(num_centrini);
-		
-		// TODO: actually implement this, this algorithm was explained during the course
+        return random_intervals;
+    }
 
-		return worse_intervals;
-	}
+    // return a list of continuous intervals with the highest variance in them (ordered from worse to best)
+    // the list is returned when the next worse interval intersects an already added interval
+    std::vector<std::pair<int, int>> get_worse_intervals() {
+        std::vector<std::pair<int, int>> worse_intervals;
+        worse_intervals.reserve(num_centrini);
+
+        // TODO: actually implement this, this algorithm was explained during the course
+
+        return worse_intervals;
+    }
 
     // reorder: begin included, end excluded
     bool topological_order(int begin, int end){
 
 
-		end = min(end, num_centrini);
+        end = min(end, num_centrini);
+
+        if(begin == end){
+            return false;
+        }
+        assert( begin < end);
+
+        int crossing_before = crossings_in_range(begin,end);
 
         // reset the vectors
         for(int i=begin; i<end; i++){
@@ -272,137 +286,178 @@ public:
             centrini[i].go_before= vector<int>();
         }
 
-		// insert the reordering thing
+        // insert the reordering thing
         for(int i=begin; i<end; i++) {
             for (int j = i+1; j < end; j++) {
 
-				// doto: verigy that these are not inverted 
-				int cost_i_before_j = couple_crossings[i][j];
-				int cost_j_before_i = couple_crossings[j][i];
-				
-				if (cost_i_before_j == cost_j_before_i) {
-					continue;
-				}
+                int id_j = centrini[j].id;
+                int id_i = centrini[i].id;
 
-				if (cost_i_before_j < cost_j_before_i) {
-					centrini[i].go_before.push_back(centrini[j].id);
-					centrini[j].go_after.push_back(centrini[i].id);
-				}
-				else {
-					centrini[i].go_after.push_back(centrini[j].id);
-					centrini[j].go_before.push_back(centrini[i].id);
-				}
+                // doto: verigy that these are not inverted
+                int cost_i_before_j = couple_crossings[id_i][id_j];
+                int cost_j_before_i = couple_crossings[id_j][id_i];
+
+                if (cost_i_before_j == cost_j_before_i) {
+                    continue;
+                }
+
+                if (cost_i_before_j < cost_j_before_i) {
+                    centrini[i].go_before.push_back(centrini[j].id);
+                    centrini[j].go_after.push_back(centrini[i].id);
+                }
+                else {
+                    centrini[i].go_after.push_back(centrini[j].id);
+                    centrini[j].go_before.push_back(centrini[i].id);
+                }
             }
         }
 
-		vector<int> node_i_can_pop = vector<int>();
-		
-		for (int i = begin; i < end; i++) {
-			if (centrini[i].go_after.size() == 0) {
-				node_i_can_pop.push_back(centrini[i].id);
-			}
-		}
+        vector<int> node_i_can_pop = vector<int>();
 
-		int current_position = begin;
-		while (node_i_can_pop.size() != 0)
-		{
-			int node = *node_i_can_pop.end().operator--();
-			node_i_can_pop.pop_back();
+        for (int i = begin; i < end; i++) {
+            if (centrini[i].go_after.size() == 0) {
+                node_i_can_pop.push_back(centrini[i].id);
+            }
+        }
 
-			int node_position = id_to_position[node];
-			
-			// clear the reference of this node in the others
-			for (auto next_node_id : centrini[node_position].go_before) {
-				Centrino* next_node = &centrini[id_to_position[next_node_id]];
-				auto to_erase = find(next_node->go_after.begin(), next_node->go_after.end(), node);
-				next_node->go_after.erase(to_erase);
+        int current_position = begin;
+        while (node_i_can_pop.size() != 0)
+        {
+            int node = *node_i_can_pop.end().operator--();
+            node_i_can_pop.pop_back();
 
-				if (next_node->go_after.size() == 0) {
-					node_i_can_pop.push_back(next_node_id);
-				}
-			}
+            int node_position = id_to_position[node];
 
-			swapp(current_position, id_to_position[node]);
-			current_position++;
-		}
-		//return true if the solution has improove at least a bit
-		return current_position != begin;
+            // clear the reference of this node in the others
+            for (auto next_node_id : centrini[node_position].go_before) {
+                Centrino* next_node = &centrini[id_to_position[next_node_id]];
+                auto to_erase = find(next_node->go_after.begin(), next_node->go_after.end(), node);
+                next_node->go_after.erase(to_erase);
+
+                if (next_node->go_after.size() == 0) {
+                    node_i_can_pop.push_back(next_node_id);
+                }
+            }
+            //swapp(current_position, id_to_position[node]);
+
+            int swap_first = current_position;
+            int swap_last = id_to_position[node];
+
+            // this is done to shift all the items by one instead of just swapping an element
+            // this ensure that if the compleate reorder were to fail we will still be in a state that is better that
+            // the last one
+            for(int i=swap_first; i<=swap_last; i++){
+                swapp(i,swap_last);
+            }
+            current_position++;
+        }
+
+        //int tmp = crossing;
+        //calculate_crossing();
+        //assert(crossing == tmp);
+
+        // no update
+        if(current_position == begin){
+            return false;
+        }
+
+        int crossing_after = crossings_in_range(begin,end);
+        int improvement = crossing_before - crossing_after;
+        assert(improvement >= 0);
+
+        crossing -= improvement;
+
+        //int tmp = crossing;
+        //calculate_crossing();
+        //assert(tmp == crossing);
+
+        return improvement != 0;
+
     }
 };
 
 
 template<typename T, typename E>
 T& operator<<(T& os, vector<E> &v) {
-	for (T& e : v) {
-		os << e << " ";
-	}
-	return os;
+    for (T& e : v) {
+        os << e << " ";
+    }
+    return os;
 }
 
 template<typename T>
 T& operator<<(T& os, Solution & s) {
-	os << s.crossing << endl;
-	for (auto& c : s.centrini) {
-		os << c.id << " ";
-	}
-	os << endl;
-	os << "***" << endl;
-	return os;
+    os << s.crossing << endl;
+    for (auto& c : s.centrini) {
+        os << c.id << " ";
+    }
+    os << endl;
+    os << "***" << endl;
+    return os;
 }
 
 inline Centrino* Line::get_centrino() const{
-	int position = solution->id_to_position[centrino];
-	return &solution->centrini[position];
+    int position = solution->id_to_position[centrino];
+    return &solution->centrini[position];
 }
 
 
 int main() {
 
-	ifstream input("input.txt");
-	ofstream output("output.txt");
+    ifstream input("input.txt");
+    ofstream output("output.txt");
 
-	Solution solution = Solution(input);
-	Line::solution = &solution;
+    Solution solution = Solution(input);
+    Line::solution = &solution;
 
-	solution.calculate_crossing();
-	int current_best = solution.crossing;
-	int original_best = current_best;
+    solution.calculate_crossing();
+    int current_best = solution.crossing;
+    int original_best = current_best;
 
-	output << solution;
+    output << solution;
 
-	solution.greedy_ordering();
-	solution.calculate_crossing();
+    solution.greedy_ordering();
+    solution.calculate_crossing();
 
-	if (solution.crossing < current_best) {
-		current_best = solution.crossing;
-		output << solution;
-	}
+    if (solution.crossing < current_best) {
+        current_best = solution.crossing;
+        output << solution;
+    }
 
-	
-	solution.greedy_ordering(true);
-	solution.calculate_crossing();
 
-	if (solution.crossing < current_best) {
-		current_best = solution.crossing;
-		output << solution;
-	}
-	else {
-		solution.greedy_ordering();
-		solution.calculate_crossing();
-	}
+    solution.greedy_ordering(true);
+    solution.calculate_crossing();
 
-	if (current_best == original_best) {
-		return 0;
-	}
+    if (solution.crossing < current_best) {
+        current_best = solution.crossing;
+        output << solution;
+    }
+    else {
+        solution.greedy_ordering();
+        solution.calculate_crossing();
+    }
 
-	{
-		int start = rand() % solution.num_centrini;
-		int end = start + rand() % 15;
-		bool has_improve = solution.topological_order(start, end);
-		if (has_improve) {
-			output << solution;
-		}
-	}
 
-	return 0;
+    if (current_best == original_best) {
+        return 0;
+    }
+
+#ifdef LOCAL
+    for(int i=0; i<1000; i++)
+#else
+        while(true)
+#endif
+    {
+        bool has_improve = false;
+        for(int j=0; j<20; j++){
+            int start = rand() % solution.num_centrini;
+            int end = start + rand() % 20 + 2;
+            has_improve |= solution.topological_order(start, end);
+        }
+
+        if (has_improve) {
+            output << solution;
+        }
+    }
+
 }
