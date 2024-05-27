@@ -9,6 +9,7 @@
 #include <numeric>
 #include <cmath>
 #include <set>
+#include <cassert>
 
 using namespace std;
 
@@ -152,6 +153,37 @@ public:
         }
     }
 
+	void swapp(int i, int j) {
+		if (i == j) {
+			return;
+		}
+		int id_i = this->centrini[i].id;
+		int id_j = this->centrini[j].id;
+
+		int cost_i_before_j = couple_crossings[id_i][id_j];
+		int cost_j_before_i = couple_crossings[id_j][id_i];
+
+		int saved_crossings;
+		if (i > j) {
+			saved_crossings = - cost_i_before_j + cost_j_before_i;
+		}
+		else {
+			saved_crossings = + cost_i_before_j - cost_j_before_i;
+		}
+		assert(saved_crossings > 0);
+		this->crossing -= saved_crossings;
+
+		auto tmp = centrini[i];
+		centrini[i] = centrini[j];
+		centrini[j] = tmp;
+
+		centrini[i].position = i;
+		centrini[j].position = j;
+
+		id_to_position[centrini[i].id] = i;
+		id_to_position[centrini[j].id] = j;
+	}
+
     unsigned calculate_couple_crossings(Centrino *c1, Centrino *c2) {
         if (c1->id == c2->id) { return 0; }
         unsigned counter = 0;
@@ -179,6 +211,7 @@ public:
         }
         this->crossing = counter;
     }
+
 
     void greedy_ordering(bool use_median = false) {
 
@@ -238,13 +271,62 @@ public:
             centrini[i].go_before= vector<int>();
         }
 
+		// insert the reordering thing
         for(int i=begin; i<end; i++) {
-            for (int j = begin; j < begin; j++) {
-                if( couple_crossings[i][j])
+            for (int j = i+1; j < end; j++) {
+
+				// doto: verigy that these are not inverted 
+				int cost_i_before_j = couple_crossings[i][j];
+				int cost_j_before_i = couple_crossings[j][i];
+				
+				if (cost_i_before_j == cost_j_before_i) {
+					continue;
+				}
+
+				if (cost_i_before_j < cost_j_before_i) {
+					centrini[i].go_before.push_back(centrini[j].id);
+					centrini[j].go_after.push_back(centrini[i].id);
+				}
+				else {
+					centrini[i].go_after.push_back(centrini[j].id);
+					centrini[j].go_before.push_back(centrini[i].id);
+				}
             }
         }
-    }
 
+		vector<int> node_i_can_pop = vector<int>();
+		
+		for (int i = begin; i < end; i++) {
+			if (centrini[i].go_after.size() == 0) {
+				node_i_can_pop.push_back(centrini[i].id);
+			}
+		}
+
+		int current_position = begin;
+		while (node_i_can_pop.size() != 0)
+		{
+			int node = *node_i_can_pop.end().operator--();
+			node_i_can_pop.pop_back();
+
+			int node_position = id_to_position[node];
+			
+			// clear the reference of this node in the others
+			for (auto next_node_id : centrini[node_position].go_before) {
+				Centrino* next_node = &centrini[id_to_position[next_node_id]];
+				auto to_erase = find(next_node->go_after.begin(), next_node->go_after.end(), node);
+				next_node->go_after.erase(to_erase);
+
+				if (next_node->go_after.size() == 0) {
+					node_i_can_pop.push_back(next_node_id);
+				}
+			}
+
+			swapp(current_position, id_to_position[node]);
+			current_position++;
+		}
+		//return true if the solution has improove at least a bit
+		return current_position != begin;
+    }
 };
 
 
@@ -283,6 +365,12 @@ int main() {
 
 	solution.calculate_crossing();
 	int current_best = solution.crossing;
+
+
+	solution.topological_order(0, solution.num_centrini);
+	output << solution;
+	cout << solution;
+	return 0;
 
 
 	output << solution;
