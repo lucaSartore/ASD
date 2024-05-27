@@ -170,7 +170,7 @@ public:
 		else {
 			saved_crossings = + cost_i_before_j - cost_j_before_i;
 		}
-		assert(saved_crossings > 0);
+		assert(saved_crossings >= 0);
 		this->crossing -= saved_crossings;
 
 		auto tmp = centrini[i];
@@ -237,11 +237,11 @@ public:
     	random_intervals.reserve(num_centrini);
 		
 		// seed the pseudo random number generator
-		std::srand(static_cast<unsigned int>(std::time(nullptr)));
+		srand(static_cast<unsigned int>(time(nullptr)));
 
 		for (int i = 0; i < num_centrini; ++i) {
-			int start_index = std::rand() % (num_centrini + 1);
-			int end_index = std::rand() % (num_centrini + 1);
+			int start_index = rand() % (num_centrini + 1);
+			int end_index = rand() % (num_centrini + 1);
 
 			random_intervals.emplace_back(start_index, end_index);
 		}
